@@ -2,7 +2,7 @@
 
 ## Synopsis
 
-This project contains experimental *Python* code for the *BOSSE v1.0: the Biodiversity Observing System Simulation Experiment* (pyBOSSE) model using simulating temporally dynamic scenes of species maps, vegeation traits and associated remote sensing imagery for the development of remote sensing methods for the quantification of plant diversity and biodiveristy-ecosyste function relationships. 
+This project contains experimental *Python* code for the *BOSSE v1.0: the Biodiversity Observing System Simulation Experiment* (pyBOSSE) model using simulating temporally dynamic scenes of species maps, vegeation traits and associated remote sensing imagery for the development of remote sensing methods for the quantification of plant diversity and biodiveristy-ecosyste function relationships. A description of the model can be found in *EGUsphere*: https://egusphere.copernicus.org/preprints/2025/egusphere-2025-318/ 
 
 pyBOSSE incorporates the following packages: an updated version of **pyGNDiv** code (https://github.com/JavierPachecoLabrador/pyGNDiv-master) computing normalized plant functional diversity metrics from spectral and plant trait variables, **pyet** for the computation of potential evapotranspiration (https://github.com/pyet-org/pyet), and **NLMpy** (https://github.com/tretherington/nlmpy) for the generation of random landscapes.
 
