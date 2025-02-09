@@ -269,7 +269,11 @@ def get_GSI_and_param(x_, y0_, paths_, simnum_, veg_, sp_pft, vr_typ,
     # Plot
     if doplot:
         if x_smp0 is None:
-            x_smp0 = np.arange(x_.min(), x_.max(), np.ptp(x_)/100)
+            if np.ptp(x_) > .0:
+                x_smp0 = np.arange(x_.min(), x_.max(), np.ptp(x_)/100)
+            else:
+                x_smp0 = np.array(x_[0])
+            
         show_GSI(x_, GSI_, GSI_param, paths_, simnum_, veg_, 
                  sp_pft, kzone_, title=title, vr_in=var_in, x_smp0=x_smp0,
                  inv_val=inv_val)
