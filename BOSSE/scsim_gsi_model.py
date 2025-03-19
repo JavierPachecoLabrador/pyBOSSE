@@ -136,13 +136,13 @@ def runGSI(x, y0, delta_th, slope=.5, base=.05, tau=.02, inv_val=False,
 
 def scale_var(x_):
     x_min = np.nanmin(x_)
-    return ((x_ - x_min) / (np.nanmax(x_) - x_min))
+    return(div_zeros(x_ - x_min, np.nanmax(x_) - x_min))
 
 
 def scale_var_range(x_, x_min, x_max):
     x1 = (x_ - x_min)
     x1[x1 < 0.] = 0.
-    out_ = x1 * (x_max / (x_max - x_min))
+    out_ = x1 * div_zeros(x_max, x_max - x_min)
     return(out_)
 
 

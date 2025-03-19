@@ -25,7 +25,7 @@ def set_out_path(in_, path_outputs, subfolder_out, sp_pattern, pth_sensors='',
     # Create output folder
     if (create_out_folder and
         (os.path.isdir(paths_out['2_out_folder_plots']) is False)):
-        os.makedirs(paths_out['2_out_folder_plots'])
+        os.makedirs(paths_out['2_out_folder_plots'], exist_ok=True)
 
     return(paths_out, in_)
 
