@@ -19,7 +19,11 @@ import seaborn as sn
 parent_foler = os.path.abspath(
     os.path.join(os.path.abspath(
         os.path.join(os.getcwd(), os.pardir)), os.pardir))
+
+# Defione as global the pyBOSSE paths
 path_bosse = (parent_foler + '//pyBOSSE//')
+path_inputs= path_bosse + '//BOSSE_inputs//'
+path_models= path_bosse + '//BOSSE_models//'
 
 sys.path.insert(0, path_bosse)
 from BOSSE.bosse import BosseModel
@@ -86,7 +90,9 @@ def plt_sp_patterns(paths_, inputs_, dest_,sim_sel=0, fontsize=12,
     for i_, spt_ in enumerate(bosse_spatial_patterns):
         (inputs_, paths_) = set_up_paths_and_inputs(None, output_folder,
                                                     create_out_folder=False,
-                                                    pth_inputs=pth_inputs)
+                                                    pth_root=path_bosse,
+                                                    pth_inputs=path_inputs,
+                                                    pth_models=path_models)
         inputs_['sp_pattern'] = spt_
         bosse_M = BosseModel(inputs_, paths_)
         bosse_M.initialize_scene(sim_sel)
@@ -735,13 +741,12 @@ output_folder = parent_foler + '//Manuscript_bosse_v1_0_figures//'
 if os.path.isdir(output_folder) == False:
     os.makedirs(output_folder)
 
-# Defione the path from where take the model inputs
-pth_inputs= path_bosse + '//BOSSE_inputs//'
-
 # Generate standard set of input options and paths
 (inputs_, paths_) = set_up_paths_and_inputs(None, output_folder,
                                             create_out_folder=False,
-                                            pth_inputs=pth_inputs)
+                                            pth_root=path_bosse,
+                                            pth_inputs=path_inputs,
+                                            pth_models=path_models)
 print(f'The manuscript figures will be stored in {output_folder}')
 # These are the default configuration options
 print_dict(inputs_, 'inputs')
@@ -753,14 +758,16 @@ bosse_spatial_patterns = bosse_M.get_input_descriptors('sp_pattern')
 fig_name = 'Fig_3.png'
 if os.path.isfile(output_folder + fig_name) is False:
     plt_sp_patterns(paths_, inputs_, output_folder + fig_name,
-                    pth_inputs=pth_inputs)
+                    pth_inputs=path_inputs)
 
 # %% Figure 4
 fig_name = 'Fig_4.png'
 if os.path.isfile(output_folder + fig_name) is False:
     (inputs_, paths_) = set_up_paths_and_inputs(None, output_folder,
                                                 create_out_folder=False,
-                                                pth_inputs=pth_inputs)
+                                                pth_root=path_bosse,
+                                                pth_inputs=path_inputs,
+                                                pth_models=path_models)
 
     plot_var_time_series(['LAI', 'Cab'],
                         ['$\\rm m^2 m^{-2}]$', '[$\\rm \\mu g cm^-2$]'],
@@ -773,7 +780,9 @@ if os.path.isfile(output_folder + fig_name) is False:
     for spt_ in bosse_spatial_patterns:        
         (inputs_, paths_) = set_up_paths_and_inputs(None, output_folder,
                                                     create_out_folder=False,
-                                                    pth_inputs=pth_inputs)
+                                                    pth_root=path_bosse,
+                                                    pth_inputs=path_inputs,
+                                                    pth_models=path_models)
         inputs_['sp_pattern'] = spt_
         if spt_ == 'intermediate':
             fig_name_i = (output_folder + fig_name)
@@ -791,7 +800,9 @@ if os.path.isfile(output_folder + fig_name) is False:
     for spt_ in bosse_spatial_patterns: 
         (inputs_, paths_) = set_up_paths_and_inputs(None, output_folder,
                                                     create_out_folder=False,
-                                                    pth_inputs=pth_inputs)
+                                                    pth_root=path_bosse,
+                                                    pth_inputs=path_inputs,
+                                                    pth_models=path_models)
         inputs_['sp_pattern'] = spt_
         if spt_ == 'intermediate':
             fig_name_i = (output_folder + fig_name)
@@ -806,7 +817,7 @@ if os.path.isfile(output_folder + fig_name) is False:
 sim_sel = 0
 fig_name = 'Fig_7.png'
 if os.path.isfile(output_folder + fig_name) is False:
-    plot_EF_time_series('intermediate', 'continental', inputs_, paths_,
+    plot_EF_time_series('intermediate', 'Continental', inputs_, paths_,
                         output_folder + fig_name, sim_sel)
 
 # %% Figure S12

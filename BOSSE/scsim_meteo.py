@@ -344,5 +344,8 @@ def get_site_meteo(paths_, KZone='Continental', site_num=0, minLAImax=1.):
             # Set a larger treshold for longwave incoming radiation
             dsf_out[v_] = interp_lt_thr(indx_, dsf_out[v_].values, th_=10,
                                         rp_val=50)
+            
+    # Round up some variables that lead to slight differences between machines
+    dsf_out['ea'] = np.round(dsf_out['ea'], 5)
 
     return(dsf_out, ds_.attrs, lai_max)

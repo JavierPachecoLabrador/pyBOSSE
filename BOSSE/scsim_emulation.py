@@ -131,9 +131,7 @@ def truncatedGMM(n_samples, GMM, trans_, lambda_, LB, UB, LBglob, UBglob,
     size2_ = 1
     Xout = np.zeros([n_samples, len(trans_)])
 
-    if rseed_ is None:
-        GMM.random_state = n_samples
-    else:
+    if rseed_ != None:
         GMM.random_state = rseed_
         
     # Transform the global bounds
@@ -142,6 +140,7 @@ def truncatedGMM(n_samples, GMM, trans_, lambda_, LB, UB, LBglob, UBglob,
 
     counter_ = 0
     while (size_ < n_samples) and (counter_ < max_loops):
+        GMM.random_state = GMM.random_state + counter_ + size_
         # print('Round: %d (%d data)' % (counter_, size_))
         # Radomly draw, transform, and remove non-finite values
         X = EMtransf_(sharp_truncation(
@@ -169,6 +168,7 @@ def truncatedGMM(n_samples, GMM, trans_, lambda_, LB, UB, LBglob, UBglob,
     # If not achieved in some cycles, force ranodmly the values within the
     # bounds and select the most likely values
     if (size_ < n_samples):
+        GMM.random_state = GMM.random_state + counter_ + size_
         # Transform bounds
         LBt = EMdotransf_(LB.reshape(1, -1), trans_, lambda_).ravel()
         UBt = EMdotransf_(UB.reshape(1, -1), trans_, lambda_).ravel()
@@ -188,7 +188,9 @@ def truncatedGMM(n_samples, GMM, trans_, lambda_, LB, UB, LBglob, UBglob,
         X = EMtransf_(X, trans_, lambda_, drop_nonf=False)
         I_ = np.all(np.isfinite(X), axis=1)
         X = X[I_, :]
-        Isort = np.argsort(loglike[I_])
+        # Use mergesort to preserve the relative order of equal valuesensure and
+        # ensure reproducibility between different machines
+        Isort = np.argsort(loglike[I_], kind='mergesort')
         
         num_missing = n_samples - size_
         Xout[-num_missing:, :] = X[Isort[-num_missing:], :]

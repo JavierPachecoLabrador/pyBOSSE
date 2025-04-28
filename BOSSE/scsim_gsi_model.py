@@ -151,7 +151,8 @@ def generate_sp_gsi_param_ranges(slope_b=[2, 30], base_b=[.4, .6],
     ranges_ = np.sort(np.array(list(
         [np.random.uniform(slope_b[0], slope_b[1], 2),
          np.random.uniform(base_b[0], base_b[1], 2),
-         np.random.uniform(tau_b[0], tau_b[1], 2)]), dtype=object), axis=1)
+         np.random.uniform(tau_b[0], tau_b[1], 2)]), dtype=object), axis=1,
+                      kind='mergesort')
 
     return (ranges_)
 

@@ -92,7 +92,6 @@ def generate_map(simnum_, inputs_, paths_, P_pft, veg_, meteo_):
     soil_map = gaussian(env_background, sigma=np.random.uniform(.5, 1.5),
                         mode='mirror', preserve_range=False)
 
-
     # Update the abundances
     sp_id, freq_ = np.unique(sp_map.reshape(-1), return_counts=True)
     sp_ab = freq_ / inputs_['scene_sz']**2
@@ -124,11 +123,13 @@ def generate_map(simnum_, inputs_, paths_, P_pft, veg_, meteo_):
         sp_ab = freq_ / inputs_['scene_sz']**2
 
     # Finally, short species ID by abundance in oreder to keep more comparable
-    # simulations with different spatial patterns
-    sp_map_tmp = 1000 + sp_map
-    is_ = np.argsort(sp_ab)[::-1]
+    # simulations with different spatial patterns. Use mergesort to preserve the
+    # relative order of equal valuesensure and ensure reproducibility between
+    # different machines
+    sp_map_tmp = 1E5 + sp_map
+    is_ = np.argsort(sp_ab, kind='mergesort')[::-1]
     for i_, idi_ in enumerate(is_):
-        I_ = sp_map_tmp == 1000 + idi_
+        I_ = sp_map_tmp == 1E5 + idi_
         sp_map[I_] = i_
 
     # Generate the PFT map from the species
@@ -721,6 +722,9 @@ def scene_generator(simnum_, seednum_, inputs_, paths_, scsz_, X_, all_vars,
     rng_intra_sp_var = np.random.default_rng(seed=(seednum_ + 2) * 100)
     np.random.seed((inputs_['rseed_num'] + 1) * (seednum_ + 3) * 10000)
     random.seed((inputs_['rseed_num'] + 1) * (seednum_ + 3) * 10000)
+    # Seed also the GMM providing foliar traits
+    GM_T['GMMtraits'].random_state = ((inputs_['rseed_num'] + 4) +
+                                      (seednum_ + 10) * 10)
 
     # Generate min and max plant trait maps
     PT_map_min, PT_map_max, PT_map_delta, num_dis = (
@@ -742,8 +746,8 @@ def scene_generator(simnum_, seednum_, inputs_, paths_, scsz_, X_, all_vars,
 
     # -------------------------------------------------------------------------
     # Reseed RNG to ensure same properties for maps with different features
-    np.random.seed((inputs_['rseed_num'] + 1) * (seednum_ + 4) * 10000)
-    random.seed((inputs_['rseed_num'] + 1) * (seednum_ + 4) * 10000)
+    np.random.seed((inputs_['rseed_num'] + 1) * (seednum_ + 6) * 10000)
+    random.seed((inputs_['rseed_num'] + 1) * (seednum_ + 6) * 10000)
 
     # Generate Ecosystem Respiration parameters for the model of 
     # Migliavacca et al. 2011. Update LAImax for the respiration parameters,

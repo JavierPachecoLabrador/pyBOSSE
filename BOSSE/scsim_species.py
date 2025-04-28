@@ -465,8 +465,10 @@ def generate_plant_traits(sp_map, sp_id, S_max, sp_pft, unique_pft, veg_, GM_T,
         pft_LAImax[sp_pft == spfi_] = veg_['LAI_max'][Iv_]
         
     # Assign the largest LAI o the PFTs with the largest maximum LAI
-    ord_pft_LAImax = np.argsort(pft_LAImax)
-    ord_sp_LAImax = np.argsort(PT_[:, I_lai])
+    # Use mergesort to preserve the relative order of equal valuesensure and
+    # ensure reproducibility between different machines
+    ord_pft_LAImax = np.argsort(pft_LAImax, kind='mergesort')
+    ord_sp_LAImax = np.argsort(PT_[:, I_lai], kind='mergesort')
     PT_[ord_pft_LAImax, I_lai] = PT_[ord_sp_LAImax, I_lai]
    
     # Determine the maximum LAI of the species in the scene. Give some
@@ -561,7 +563,7 @@ def generate_plant_trait_limits(sp_map, sp_id, sp_ab, S_max, sp_pft, veg_, GM_T,
     Then for some variables, consider which variables should have max values
     at the moment of maximum development, and which should be minimum. For
     those unclear, which one is selected randomly.
-    """    
+    """
     # For each PFT, select produce an averaged value and a range of variability
     unique_pft = np.unique(sp_pft)
     local_av = dict()
@@ -594,7 +596,7 @@ def generate_plant_trait_limits(sp_map, sp_id, sp_ab, S_max, sp_pft, veg_, GM_T,
         local_av[spfi_] = np.mean(generate_PT(
             GM_T, 100, PT_LB_tmp, PT_UB_tmp, PT_LB0, PT_UB0, veg_,
             Iv_, I_cab, I_lai, I_hc, I_vcmo, I_gmm, I_rnd, overs_=5
-            )[np.random.randint(0, 100, 3)],axis=0)
+            )[np.random.randint(0, 100, 3)], axis=0)
         
         # Ensure a relatively centered LAI value for the treshold
         local_av[spfi_][I_lai] = np.min((np.max((1.5, local_av[spfi_][I_lai])),

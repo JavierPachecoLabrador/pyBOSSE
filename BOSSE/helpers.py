@@ -10,16 +10,18 @@ from scipy.stats import (zscore, spearmanr, pearsonr, linregress)
 
 # %% 1) IO
 def set_out_path(in_, path_outputs, subfolder_out, sp_pattern, pth_sensors='',
-                 pth_inputs='', pth_meteo='', pth_models='',
-                 create_out_folder=True):
+                 pth_meteo='', pth_root='',  pth_bosse='', pth_inputs='',
+                 pth_models='', create_out_folder=True):
     # Update input's structure
     in_['sp_pattern'] = sp_pattern
     in_['subfolder_out'] = (subfolder_out + '//' + sp_pattern + '//')
     
     # Generate simulation paths
     paths_out = set_bosse_paths(pth_out=path_outputs, sensor_='Hy',
-                                pth_inputs=pth_inputs, pth_meteo=pth_meteo,
-                                pth_sensors=pth_sensors, pth_models=pth_models,
+                                pth_sensors=pth_sensors, pth_meteo=pth_meteo,
+                                pth_root=pth_root, pth_bosse=pth_bosse,
+                                pth_inputs=pth_inputs,
+                                pth_models=pth_models,
                                 sf_out=in_['subfolder_out'])
     
     # Create output folder
@@ -48,14 +50,22 @@ def zone_snum(simnum_, kzone_):
     return('%s_sim%02d' % (kzone_[:3], simnum_))
 
 
-def set_bosse_paths(pth_out='', sf_out='', sensor_='Hy', pth_inputs='',
-                    pth_meteo='', pth_sensors='', pth_models='',
-                    n_hidden_lyrs=2, mang_=False, sims_v=12):
+def set_bosse_paths(pth_out='', pth_root='', pth_bosse='', sf_out='',
+                    sensor_='Hy', pth_inputs='', pth_meteo='', pth_sensors='',
+                    pth_models='', n_hidden_lyrs=2, mang_=False, sims_v=12):
     ori_ = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
     paths_ = dict()
-    # General paths -----------------------------------------------------------        
-    paths_['0_root'] = ori_ + '//'
-    paths_['0_bosse'] = ori_ + '//pyBOSSE//'
+    
+    # General paths -----------------------------------------------------------      
+    if pth_root == '':
+        paths_['0_root'] = ori_ + '//'
+    else:
+        paths_['0_root'] = copy.deepcopy(pth_root)
+    if pth_bosse == '':
+        paths_['0_bosse'] = paths_['0_root'] + '//pyBOSSE//'
+    else:
+        paths_['0_bosse'] = copy.deepcopy(pth_bosse)
+    
     paths_['0_outputs'] = pth_out + '//'
 
     # Ancillary inputs ---------------------------------------------------------
@@ -87,16 +97,16 @@ def set_bosse_paths(pth_out='', sf_out='', sensor_='Hy', pth_inputs='',
     # GMM plant traits
     paths_['1_ori_GMMtraits_file'] = (paths_['1_simulations'] +
                                       'Trait_GMD//leaf_rtm_db.csv')
-    paths_['1_dest_GMMtraits_folder'] = (paths_['0_root'] +
-                                         'BOSSE_models//GMMtraits//')
+    paths_['1_dest_GMMtraits_folder'] = (paths_['0_bosse_models'] +
+                                         '//GMMtraits//')
     paths_['1_dest_GMMtraits_file_pkl'] = (paths_['1_dest_GMMtraits_folder'] +
                                            'GMMtraits.pkl')
     paths_['1_dest_GMMtraits_file_joblib'] = (
         paths_['1_dest_GMMtraits_folder'] + 'GMMtraits.joblib')
     
     # GMM PFTs
-    paths_['1_dest_PFTdist_folder'] = (paths_['0_root'] +
-                                       'BOSSE_models//PFTdist//')
+    paths_['1_dest_PFTdist_folder'] = (paths_['0_bosse_models'] +
+                                       '//PFTdist//')
     
     # R emulator. Inputs.
     paths_['1_ori_NNR_file_meta'] = ((
@@ -129,7 +139,7 @@ def set_bosse_paths(pth_out='', sf_out='', sensor_='Hy', pth_inputs='',
     
     # Models. Always for Hy
     paths_['1_dest_NNR_folder'] = (
-        paths_['0_root'] + 'BOSSE_models//NNR_nlyr%d_Hy%s//' %
+        paths_['0_bosse_models'] + '//NNR_nlyr%d_Hy%s//' %
         (n_hidden_lyrs, mglb))
     paths_['1_dest_NNR_file_pkl'] = (paths_['1_dest_NNR_folder'] + 'NNR.pkl')
     paths_['1_dest_NNR_file_joblib'] = (paths_['1_dest_NNR_folder'] +
@@ -143,7 +153,7 @@ def set_bosse_paths(pth_out='', sf_out='', sensor_='Hy', pth_inputs='',
         paths_['1_ori_NNR_file_test'])
     # F emulator. Models
     paths_['1_dest_NNF_folder'] = (
-        paths_['0_root'] + 'BOSSE_models//NNF_nlyr%d%s//' %
+        paths_['0_bosse_models'] + '//NNF_nlyr%d%s//' %
         (n_hidden_lyrs, mglb))
     paths_['1_dest_NNF_file_pkl'] = (paths_['1_dest_NNF_folder'] + 'NNF.pkl')
     paths_['1_dest_NNF_file_joblib'] = (paths_['1_dest_NNF_folder'] +
@@ -158,7 +168,7 @@ def set_bosse_paths(pth_out='', sf_out='', sensor_='Hy', pth_inputs='',
         paths_['1_ori_NNR_file_test'])
     # LST emulator. Models
     paths_['1_dest_NNT_folder'] = (
-        paths_['0_root'] + 'BOSSE_models//NNT_nlyr%d%s//' %
+        paths_['0_bosse_models'] + '//NNT_nlyr%d%s//' %
         (n_hidden_lyrs, mglb))
     paths_['1_dest_NNT_file_pkl'] = (paths_['1_dest_NNT_folder'] + 'NNT.pkl')
     paths_['1_dest_NNT_file_joblib'] = (paths_['1_dest_NNT_folder'] +
@@ -173,7 +183,7 @@ def set_bosse_paths(pth_out='', sf_out='', sensor_='Hy', pth_inputs='',
         paths_['1_ori_NNR_file_test'])
     # Ecosystem functions emulator. Models
     paths_['1_dest_NNeF_folder'] = (
-        paths_['0_root'] + 'BOSSE_models//NNeF_nlyr%d//' % (n_hidden_lyrs))
+        paths_['0_bosse_models'] + '//NNeF_nlyr%d//' % (n_hidden_lyrs))
     paths_['1_dest_NNeF_file_pkl'] = (paths_['1_dest_NNeF_folder'] +
                                       'NNef.pkl')
     paths_['1_dest_NNeF_file_joblib'] = (paths_['1_dest_NNeF_folder'] +
@@ -189,7 +199,7 @@ def set_bosse_paths(pth_out='', sf_out='', sensor_='Hy', pth_inputs='',
         'EcoStr_1_', 'EcoStr_2_')
     # Rinv emulator. Models, for different sensors
     paths_['1_dest_NNRinv_folder'] = (
-        paths_['0_root'] + 'BOSSE_models//NNRinv_nlyr%d_%s%s//' %
+        paths_['0_bosse_models'] + '//NNRinv_nlyr%d_%s%s//' %
         (n_hidden_lyrs, sensor_, mglb))
     paths_['1_dest_NNRinv_file_pkl'] = (paths_['1_dest_NNRinv_folder'] +
                                         'NNRinv.pkl')
@@ -204,8 +214,8 @@ def set_bosse_paths(pth_out='', sf_out='', sensor_='Hy', pth_inputs='',
         
 
     # rss model (from SMp and level)
-    paths_['1_ori_Irss_file'] = (paths_['0_root'] +
-                                 '//BOSSE_models//Interp_rss//rss_smp_mod.mat')
+    paths_['1_ori_Irss_file'] = (paths_['0_bosse_models'] +
+                                 '//Interp_rss//rss_smp_mod.mat')
     
     # Scene simulator ----------------------------------------------------------
     paths_['2_out_folder'] = paths_['0_outputs'] + sf_out + '//'
@@ -218,8 +228,8 @@ def set_bosse_paths(pth_out='', sf_out='', sensor_='Hy', pth_inputs='',
 
 
 def set_up_paths_and_inputs(options_, path_outputs, create_out_folder=True,
-                            pth_inputs='', pth_meteo='', pth_sensors='',
-                            pth_models=''):
+                             pth_sensors='', pth_meteo='', pth_root='',
+                             pth_bosse='', pth_inputs='',  pth_models=''):
     """_simulation_options_
 
     options:
@@ -258,7 +268,7 @@ def set_up_paths_and_inputs(options_, path_outputs, create_out_folder=True,
                    'sensor': '_Hy',                      
                    'spat_res': 100,               
                    'sp_pattern': 'intermediate',
-                   'clim_zone': 'continental',
+                   'clim_zone': 'Continental',
                    'inspect': False,
                    'verbose': False}
     else:
@@ -279,9 +289,11 @@ def set_up_paths_and_inputs(options_, path_outputs, create_out_folder=True,
                                    inputs_['subfolder_out'],
                                    inputs_['sp_pattern'],
                                    create_out_folder=create_out_folder,
-                                   pth_inputs=pth_inputs,
-                                   pth_meteo=pth_meteo,
                                    pth_sensors=pth_sensors,
+                                   pth_meteo=pth_meteo,
+                                   pth_root=pth_root,
+                                   pth_bosse=pth_bosse,
+                                   pth_inputs=pth_inputs,
                                    pth_models=pth_models)
 
 
