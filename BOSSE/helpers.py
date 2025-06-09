@@ -3,9 +3,11 @@ import os
 import copy
 import pandas as pd
 import numpy as np
+import time as time
 from scipy.stats import norm
 import sklearn.metrics as metrics
 from scipy.stats import (zscore, spearmanr, pearsonr, linregress)
+import netCDF4 as nc
 
 
 # %% 1) IO
@@ -349,6 +351,63 @@ def check_non_empty_file(file_path, min_size=5, unit='kb'):
     return(out_bool)
 
 
+def save_to_netcdf_layers(out_netcdf, sc_size, dict_vars, overwrite=True):
+    if os.path.isfile(out_netcdf):
+        if overwrite==False:
+            Warning(f'{out_netcdf} already exists and overwrite=False')
+        else:
+            os.remove(out_netcdf)
+            
+    if os.path.isfile(out_netcdf) == False:
+        # # Create file and variables
+        x = nc.Dataset(out_netcdf,'w', format='NETCDF4')
+        x.createDimension('n_rows', sc_size)
+        x.createDimension('n_cols', sc_size)
+        
+        # # Add results
+        for item in dict_vars.items():
+            var_name = item[0]
+            var_data = item[1]
+            var_nc = x.createVariable(var_name, 'double', ('n_rows','n_cols'))
+            var_nc[:, :] = var_data[:, :]
+
+        # # Close file
+        x.close()
+
+
+def save_to_netcdf_cube(out_netcdf, cb_size, cube_data, var_names=None,
+                        var_values=None, overwrite=True):
+    if os.path.isfile(out_netcdf):
+        if overwrite==False:
+            Warning(f'{out_netcdf} already exists and overwrite=False')
+        else:
+            os.remove(out_netcdf)
+            
+    if os.path.isfile(out_netcdf) == False:
+        # # Create file and variables
+        x = nc.Dataset(out_netcdf,'w', format='NETCDF4')
+        x.createDimension('n_rows', cb_size[0])
+        x.createDimension('n_cols', cb_size[1])
+        x.createDimension('n_var', cb_size[2])
+        
+        # # Add the cube dataset
+        var_nc = x.createVariable('cube_data', 'double', ('n_rows','n_cols',
+                                                          'n_var'))
+        var_nc[:, :, :] = cube_data[:, :, :]
+        
+        # Add the variable names if provied
+        if var_names != None:
+            var_nc_nm = x.createVariable('var_names', 'S4', ('n_var'))
+            var_nc_nm[:] = np.array(var_names, dtype='object')
+            
+        # Add the variable names if provied
+        if isinstance(var_values, np.ndarray) or (var_values != None):
+            var_nc_val = x.createVariable('var_values', 'double', ('n_var'))
+            var_nc_val[:] = var_values[:]
+
+        # # Close file
+        x.close()   
+
 # %% 2) Operations
 def div_zeros(a, b, out_=0.):
     if isinstance(a, float):
@@ -605,3 +664,134 @@ def var2label(vr_):
          lbl = r'$%s_{\rm %s, %s, %s, %s}$' % (chk[0], chk[1], chk[2],
                                                chk[3], chk[4])
     return(lbl)
+
+# %% 6) Benchmarking computational speed
+def benchmark_bosse_speed_print(df_):
+    # Print results on screen
+    print('Mean BOSSE initialization time = %.2f seconds' %
+          df_.loc[:, 'initialization_etime_s'].mean())
+    print('Mean BOSSE simulation time for remote sensing imagery (one snapshot ' +
+          'of R_{hyper} + OT + F_{hyper} + LST) = %.2f seconds' %
+          df_.loc[:, 'imagery_simulation_etime_s'].mean())
+    print('Mean BOSSE simulation time for 24 hours of ecosystem ' +
+          'functions = %.2f seconds' %
+          df_.loc[:, 'ecofun_simulation_etime_s'].mean())      
+    print('Mean BOSSE simulation time for one hour of ecosystem ' +
+          'functions = %.2f seconds' %
+          (df_.loc[:, 'ecofun_simulation_etime_s'].mean() / 24.))
+
+
+def benchmark_bosse_speed(BosseModel, inputs_, paths_, out_fname=None,
+                          n_samples=10, n_days=12, bosse_spatial_patterns=None,
+                          bosse_climatic_zones=None):
+    
+    print('Benchmarking BOSSE running speed. This might take some minutes')
+    
+    # Print the configuration provided
+    print_dict(inputs_, 'inputs')
+    
+    # Complete inputs
+    bosse_M = BosseModel(inputs_, paths_)
+    if bosse_spatial_patterns == None:
+        bosse_spatial_patterns = bosse_M.get_input_descriptors('sp_pattern')
+    if bosse_climatic_zones==None:
+        bosse_climatic_zones = bosse_M.get_input_descriptors('clim_zone')
+
+    # Preallocate dataframe
+    num_runs = (len(bosse_spatial_patterns) * len(bosse_climatic_zones) *
+                n_samples)
+    
+    print(f'Benchmark test: {num_runs} scenes in total ' +
+          '({n_days} days per scene)')
+    
+    # Preallocate
+    df_ = pd.DataFrame(
+        data=np.concatenate((np.array([['', '', '']] * num_runs),
+                            np.zeros((num_runs, 3), dtype=float)), axis=1),
+        columns=['Climatic Zone', 'Spatial Pattern', 'sample',
+                'initialization_etime_s', 'imagery_simulation_etime_s',
+                'ecofun_simulation_etime_s'])
+    
+    # Run the simulations to benchmark
+    k_ = 0
+    for kz_ in bosse_climatic_zones:
+        inputs_['clim_zone'] = kz_
+        for sp_ in bosse_spatial_patterns:
+            inputs_['sp_pattern'] = sp_
+            for i_ in range(n_samples):
+                t00 = time.time()
+                
+                # Test the initialization time
+                df_.iloc[k_, :3] = (kz_, sp_, '%d' % i_)
+                t0 = time.time()
+                bosse_M = BosseModel(inputs_, paths_)
+                bosse_M.initialize_scene(i_, seednum_=100)
+                df_.loc[k_, 'initialization_etime_s'] = time.time() - t0
+                
+                # Define dates for the simulation
+                sel_dates = np.linspace(
+                    0, bosse_M.meteo_mdy.shape[0] - 1, 24).astype(int)
+                
+                # Test the time to produce all the plant trait maps and remote
+                # sensing imagery at midday, and hourly ecosystem functions for
+                # each date for 12 dates of the time series
+                ti_ = 0
+                t0 = time.time()
+                for ti_ in sel_dates:
+                    # Plant Traits (and other variables) 
+                    PT_ = bosse_M.pred_scene_timestamp(
+                        ti_, 'meteo_mdy', 'indx_mdy')
+                    # Reflectance Factors
+                    RF_ = bosse_M.pred_refl_factors(PT_, inputs_['scene_sz'],
+                                                    sp_res=inputs_['spat_res'])
+                    # Retrieve optical traits
+                    OT_ = bosse_M.pred_opt_traits(np.concatenate((
+                        bosse_M.transf3D_2_2D(RF_),
+                        np.ones((RF_.shape[0] * RF_.shape[1], 1)) *
+                        bosse_M.meteo_mdy.loc[ti_, 'tts']), axis=1),
+                                                  RF_.shape[0])
+                    # Sun-induced chlorophyll fluorescence
+                    F_ = bosse_M.pred_fluorescence_rad(PT_, inputs_['scene_sz'],
+                                                    inputs_['scene_sz'],
+                                                    sp_res=inputs_['spat_res'])
+                    # Land Surface Temperature
+                    LST_ = bosse_M.pred_landsurf_temp(PT_, inputs_['scene_sz'],
+                                                    sp_res=inputs_['spat_res'])
+                # Store averaged etime
+                df_.loc[k_, 'imagery_simulation_etime_s'] = (
+                    (time.time() - t0) / n_days) 
+                
+                # Ecosystem functions of the whole day
+                ti_ = 0
+                t0 = time.time()
+                for ti_ in sel_dates:
+                    # print(ti_)
+                    for tj_ in range(24):
+                        tih_ = int(ti_ * 24 + tj_) 
+                        PT_ = bosse_M.pred_scene_timestamp(
+                            ti_, 'meteo_', 'indx_day')
+                        (time_out, GPP, Rb, Rb_15C, NEP, LUE, LUEgreen, lE,
+                         T, H, Rn, G, ustar) = bosse_M.pred_ecosys_funct(
+                             tih_, PT_, 'meteo_', output_map=True)
+                # Store averaged etime
+                df_.loc[k_, 'ecofun_simulation_etime_s'] = (
+                    (time.time() - t0) / n_days)
+                
+                print(f'({k_ + 1} / {num_runs}):', kz_, sp_, i_, 'etime =',
+                      time.time() - t00, 'seconds')
+
+                k_ += 1
+
+    # Store files
+    if out_fname != None:
+        df_.to_csv(out_fname + '.csv', sep=';', index=False)
+        pd.DataFrame(data=np.array([i_[1] for i_ in inputs_.items()]
+                                   ).reshape(1, -1), 
+                     columns=[i_[0] for i_ in inputs_.items()]).to_csv(
+                         out_fname + '_inputs.csv', sep=';', index=False)
+                         
+    # Print results on screen
+    benchmark_bosse_speed_print(df_)
+    
+    # Outptu results
+    return(df_)

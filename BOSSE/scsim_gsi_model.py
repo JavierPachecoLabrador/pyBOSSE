@@ -263,13 +263,13 @@ def get_GSI_and_param(x_, y0_, paths_, simnum_, veg_, sp_pft, vr_typ,
                                 inv_val=inv_val, delta_x=delta_x)
 
     # Smooth if needed
-    if treshold_ is not None:
+    if treshold_ != None:
         for i_ in range(GSI_.shape[1]):
             GSI_[:, i_, :] = smooth_gsi(GSI_[:, i_, :], treshold_=treshold_)
 
     # Plot
     if doplot:
-        if x_smp0 is None:
+        if x_smp0 == None:
             if np.ptp(x_) > .0:
                 x_smp0 = np.arange(x_.min(), x_.max(), np.ptp(x_)/100)
             else:

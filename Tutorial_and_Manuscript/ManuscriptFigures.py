@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import seaborn as sn
 
 # Import BOSSE and pyGNDIV
@@ -29,6 +30,7 @@ sys.path.insert(0, path_bosse)
 from BOSSE.bosse import BosseModel
 from BOSSE.helpers import set_up_paths_and_inputs, print_dict
 from BOSSE.scsim_rtm import check_spatial_upscale, get_ndvi_nirv
+from BOSSE.scsim_gsi_model import GSI_loop, gsi_smooth_input, get_water_avail
 
 from pyGNDiv import pyGNDiv_imagery as gni
 
@@ -81,8 +83,128 @@ def correct_var_names(leg_label):
 
 
 # Figure 3 ---------------------------------------------------------------------
-def plt_sp_patterns(paths_, inputs_, dest_,sim_sel=0, fontsize=12,
-                    pth_inputs=''):
+def show_GSI_relationship(axi, x_, GSI_cs_smp, veg_,
+             sp_pft, xlab_, ylab_, sym_='-', inv_val=False):
+    
+    if np.ptp(x_) > .0:
+        x_smp0 = np.arange(x_.min(), x_.max(), np.ptp(x_)/100)
+    else:
+        x_smp0 = np.array(x_[0])
+                
+    shp_ = GSI_cs_smp[0].shape
+    GSI_delta_th = (np.inf * np.ones(shp_)).reshape(-1)
+    y = GSI_loop(x_smp0, 0,
+                 GSI_cs_smp[0].reshape(-1),
+                 GSI_cs_smp[1].reshape(-1),
+                 GSI_cs_smp[2].reshape(-1),
+                 GSI_delta_th).reshape(-1, shp_[0], shp_[1])
+
+    if inv_val:
+        y = 1. - y
+
+    # Plot
+    axi.grid()
+    for i_ in range(shp_[0]):
+        col_ = veg_['pft_col'][veg_['pft_in'].index(sp_pft[i_])]
+        axi.fill_between(x_smp0, y[:, i_].min(axis=1), y[:, i_].max(axis=1),
+                           facecolor=col_, alpha=.5)
+        axi.plot(x_smp0, y[:, i_].mean(axis=1), sym_, color=col_)
+    axi.set_xlabel(xlab_)
+    axi.set_ylabel(ylab_)
+    
+
+def show_GSI_all(axi, doy_, GSI_all, veg_, sp_pft, xlab_, ylab_,):
+    shp_ = GSI_all.shape
+
+    # Plot
+    axi.grid()
+    for i_ in range(shp_[1]):
+        col_ = veg_['pft_col'][veg_['pft_in'].index(sp_pft[i_])]
+        # axi.fill_between(doy_, GSI_all[:, i_].min(axis=1),
+        #                  GSI_all[:, i_].max(axis=1),
+        #                    facecolor=col_, alpha=.5)
+        axi.plot(doy_, GSI_all[:, i_].mean(axis=1), color=col_)
+    axi.set_xlabel(xlab_)
+    axi.set_ylabel(ylab_)
+
+    
+def plot_GSI(fname_, bosse_M, sim_sel=0):
+    # Initialize scene
+    bosse_M.initialize_scene(0, seednum_=sim_sel)
+    
+    # Compute smoothed time series of meteorological variables    
+    wav_ = gsi_smooth_input(get_water_avail(bosse_M.veg_, bosse_M.sp_pft,
+                                            bosse_M.meteo_av30))
+    Rin_ = gsi_smooth_input(bosse_M.meteo_av30['Rin'].values)
+    Ta_ = gsi_smooth_input(bosse_M.meteo_av30['Ta'].values)
+    
+    plt.close()
+    fig, ax = plt.subplots(2, 3, figsize=(10., 5.))
+
+    show_GSI_relationship(ax[0, 0], wav_, bosse_M.GSI_wav_param, bosse_M.veg_,
+                        bosse_M.sp_pft, '$W_{\\rm r}$', '$f$($W_{\\rm p}$) [-]')
+    show_GSI_relationship(ax[0, 1], Rin_, bosse_M.GSI_rin_param, bosse_M.veg_,
+                        bosse_M.sp_pft, bosse_M.get_variable_label('Rin'),
+                        '$f$($R_{\\rm in}$) [-]')
+    show_GSI_relationship(ax[1, 0], Ta_, bosse_M.GSI_tcol_param, bosse_M.veg_,
+                        bosse_M.sp_pft, bosse_M.get_variable_label('Ta'),
+                        '$f$($T_{\\rm a, cold}$) [-]', sym_='-')
+    show_GSI_relationship(ax[1, 1], Ta_, bosse_M.GSI_twrm_param, bosse_M.veg_,
+                        bosse_M.sp_pft, bosse_M.get_variable_label('Ta'),
+                        '$f$($T_{\\rm a, warm}$) [-]', sym_='-', inv_val=True)
+    doy_ = np.arange(1, bosse_M.meteo_av30.shape[0] + 1)
+
+    ax[0, 2].grid()
+    p0 = ax[0, 2].plot(doy_, bosse_M.GSI_wav.mean(axis=2), c='Navy',
+                    label='$f$($W_{\\rm p}$)')
+    p1 = ax[0, 2].plot(doy_, bosse_M.GSI_rin.mean(axis=2), c='DarkOrange',
+                    label='$f$($R_{\\rm in}$)')
+    p2 = ax[0, 2].plot(doy_, bosse_M.GSI_tcol.mean(axis=2), '--', c='SteelBlue',
+                    label='$f$($T_{\\rm a, cold}$)')
+    p3 = ax[0, 2].plot(doy_, bosse_M.GSI_twrm.mean(axis=2), '--', c='Salmon',
+                    label='$f$($T_{\\rm a, warm}$)')
+    ax[0, 2].set_xlabel('DoY')
+    ax[0, 2].set_ylabel('$f_{\\rm GSI}$ [-]')
+
+    show_GSI_all(ax[1, 2], doy_, bosse_M.GSI_all, bosse_M.veg_,
+                bosse_M.sp_pft, 'DoY', 'GSI [-]')
+    
+    ax = ax.reshape(-1)
+    for i_ in range(6):
+        if i_ < 3:
+            f_ = .88
+        else:
+            f_ = .05
+        xl_ = ax[i_].get_xlim()
+        lx_ = xl_[0] + f_*(xl_[1] - xl_[0])
+        yl_ = ax[i_].get_ylim()
+        ly_ = yl_[0] + .9*(yl_[1] - yl_[0])
+        place_plot_label(ax[i_], lx_, ly_, i_)
+        
+
+    pfts_ = np.unique(bosse_M.sp_pft)
+    num_pft = pfts_.shape[0]
+    col_vars = ['Navy', 'DarkOrange', 'SteelBlue', 'Salmon']
+    sym_vars = ['-'] * 2 + ['--'] * 2
+
+    custom_lines = (
+        [Line2D([0], [0], color=bosse_M.veg_['pft_col'][
+            bosse_M.veg_['pft_in'].index(pfts_[i_])])
+        for i_ in range(num_pft)] +
+        [Line2D([0], [0], color=col_vars[i_], linestyle=sym_vars[i_])
+        for i_ in range(num_pft)])
+    labels = ([i_ for i_ in pfts_] + ['$f$($W_{\\rm p}$)', '$f$($R_{\\rm in}$)',
+                                    '$f$($T_{\\rm a, cold}$)',
+                                    '$f$($T_{\\rm a, warm}$)', 'GSI'])
+    fig.legend(custom_lines, labels, loc='upper center', ncol=8,
+               borderaxespad=0.1)
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.92)
+    fig.savefig(fname_, dpi=300)
+
+
+# Figure 4 ---------------------------------------------------------------------
+def plt_sp_patterns(paths_, inputs_, dest_, sim_sel=0, fontsize=12):
         
     fig, ax = plt.subplots(1, 3, figsize=[12, 3.5], sharex=True, sharey=True)
     plt.tight_layout()
@@ -113,7 +235,8 @@ def plt_sp_patterns(paths_, inputs_, dest_,sim_sel=0, fontsize=12,
     fig.savefig(dest_, dpi=300)
     plt.close()
 
-# Figure 4 ---------------------------------------------------------------------
+
+# Figure 5 ---------------------------------------------------------------------
 def plt_trait_time_series(bosse_M, axi, kl_, title_in, vr_='LAI', uds_=''):
     df_PT_ = pd.DataFrame(
     data=((np.zeros((bosse_M.S_max * bosse_M.ts_days, 2 *
@@ -208,7 +331,7 @@ def plot_var_time_series(vr_, uds_, inputs_, paths_, dest_, sim_sel=0):
     plt.close()
 
 
-# Figure 5 ---------------------------------------------------------------------
+# Figure 6 ---------------------------------------------------------------------
 def get_im_cb_limits(im_, th_=0.05, prec=2, lims_=None):
     im_ = im_.reshape(-1)
     if lims_==None:
@@ -491,7 +614,7 @@ def plot_maps(paths_, inputs_, dest_, t_=230, sim_sel=0, sp_res=100,
         return(bosse_M)
 
 
-# Figure 6 ---------------------------------------------------------------------
+# Figure 7 ---------------------------------------------------------------------
 def get_xlims(ax_):
     xl_ = ax_.get_xlim()
     lx_ = xl_[0] +  (xl_[1] - xl_[0]) * (1 / 30)
@@ -651,7 +774,7 @@ def plot_maps_sp_res(paths_, inputs_, fname_, t_=230, sim_sel=0):
     fig.savefig(fname_, dpi=300)
 
 
-# Figure 7 ---------------------------------------------------------------------
+# Figure 8 ---------------------------------------------------------------------
 def compute_EF(inputs_, paths_, dest_csv, sim_sel=0):
     print('Computing hourly ecosystem functions, it can take ~50 min')
     t_start = time.time()
@@ -756,12 +879,17 @@ bosse_spatial_patterns = bosse_M.get_input_descriptors('sp_pattern')
 
 # %% Figure 3
 fig_name = 'Fig_3.png'
+plot_GSI(output_folder + fig_name, bosse_M)
+
+
+# %% Figure 3
+fig_name = 'Fig_4.png'
 if os.path.isfile(output_folder + fig_name) is False:
     plt_sp_patterns(paths_, inputs_, output_folder + fig_name,
                     pth_inputs=path_inputs)
 
 # %% Figure 4
-fig_name = 'Fig_4.png'
+fig_name = 'Fig_5.png'
 if os.path.isfile(output_folder + fig_name) is False:
     (inputs_, paths_) = set_up_paths_and_inputs(None, output_folder,
                                                 create_out_folder=False,
@@ -774,7 +902,7 @@ if os.path.isfile(output_folder + fig_name) is False:
                         inputs_, paths_, output_folder + fig_name)
 
 # %% Figure 5
-fig_name = 'Fig_5.png'
+fig_name = 'Fig_6.png'
 count_ = 1
 if os.path.isfile(output_folder + fig_name) is False:
     for spt_ in bosse_spatial_patterns:        
@@ -794,7 +922,7 @@ if os.path.isfile(output_folder + fig_name) is False:
             plot_maps(paths_, inputs_, fig_name_i)
 
 # %% Figure 6
-fig_name = 'Fig_6.png'
+fig_name = 'Fig_7.png'
 count_ = 1
 if os.path.isfile(output_folder + fig_name) is False:
     for spt_ in bosse_spatial_patterns: 
@@ -815,7 +943,7 @@ if os.path.isfile(output_folder + fig_name) is False:
 
 # %% Figure 7
 sim_sel = 0
-fig_name = 'Fig_7.png'
+fig_name = 'Fig_8.png'
 if os.path.isfile(output_folder + fig_name) is False:
     plot_EF_time_series('intermediate', 'Continental', inputs_, paths_,
                         output_folder + fig_name, sim_sel)

@@ -6,6 +6,7 @@ import pandas as pd
 from scipy.io import loadmat
 from scipy.interpolate import RegularGridInterpolator
 import time as time
+
 from BOSSE import scsim_scene as sc
 from BOSSE import scsim_species as sp
 from BOSSE import scsim_rtm as rtm
@@ -120,7 +121,7 @@ class BosseModel:
     # Scene Initializaton ------------------------------------------------------
     # Method prepare the Scence
     def initialize_scene(self, simnum_, seednum_=None, minLAImax=1.,
-                         verbose=None, inspect=None):
+                         verbose=None, inspect=None, local_pft_lim=None):
         # Update verbose and inpsect options if necessary
         if verbose != None:
             self.inputs_['verbose'] = verbose
@@ -139,7 +140,8 @@ class BosseModel:
          self.PT_map_delta, self.num_dis, self.reco_P, self.GSI_all,
          self.GSI_wav, self.GSI_wav_param, self.GSI_rin, self.GSI_rin_param,
          self.GSI_tcol, self.GSI_tcol_param, self.GSI_twrm, self.GSI_twrm_param,
-         self.PT_mean, self.PT_min, self.PT_max, self.coulds_map) = (
+         self.PT_mean, self.PT_min, self.PT_max, self.local_av, self.local_LB,
+         self.local_UB, self.coulds_map) = (
              sc.create_scene_data(
                  self.paths_, self.inputs_, simnum_, seednum_, self.scsz_,
                  self.X0_, self.all_vars, self.PT_vars, self.PT_LB, self.PT_UB,
@@ -148,7 +150,7 @@ class BosseModel:
                  self.I_pt, self.I_gmm, self.I_rnd, self.I_sf, self.I_soil,
                  self.I_smc, self.I_fc, self.I_met, self.I_rss, self.I_rssl,
                  self.I_ang, self.veg_, self.P_pft, self.GM_T, self.reco_,
-                 self.M_rss, minLAImax=minLAImax))
+                 self.M_rss, minLAImax=minLAImax, local_pft_lim=local_pft_lim))
          
         if self.inputs_['verbose']:
             print_et('Total ', time.time() - t0)
@@ -383,6 +385,7 @@ class BosseModel:
         
         return(time_out, GPP, Rb, Rb_15C, NEP, LUE, LUEgreen, lE, T, H, Rn, G,
          ustar)
+        
 
     # Methods to plot data -----------------------------------------------------
     # Methods to get variable's symbols and units, and label
@@ -417,6 +420,20 @@ class BosseModel:
         pl.do_show_bosse_map(im_, title_lb=title_lb, xlb=xlb, ylb=ylb,
                              add_colorbar=add_colorbar, cmap=cmap,
                              plt_show=plt_show, fname=fname)
+
+    def show_pft_map(self, title_lb='BOSSE Plant Functional Types map',
+                     xlb='x [pixel]', ylb='y [pixel]', fname=None,
+                     plt_show=False):
+        pl.do_plot_pft_map(self.sp_map, self.veg_, title_lb=title_lb,
+                           xlb=xlb, ylb=ylb, add_colorbar=False,
+                           plt_show=plt_show, fname=fname)
+
+    def show_species_map(self, title_lb='BOSSE Species map',
+                         xlb='x [pixel]', ylb='y [pixel]', add_colorbar=True,
+                         cmap='tab20', fname=None, plt_show=False):
+        pl.do_show_bosse_map(self.sp_map, title_lb=title_lb, xlb=xlb, ylb=ylb,
+                           add_colorbar=add_colorbar, cmap=cmap,
+                           plt_show=plt_show, fname=fname)
     
     # Plot the spectra of each pixel colored by species
     def plot_species_spectra(self, wvl, X_, ylbl, cmp_=None, plt_show=False,
