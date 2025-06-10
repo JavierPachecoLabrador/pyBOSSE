@@ -556,7 +556,7 @@ def generate_plant_traits(sp_map, sp_id, S_max, sp_pft, unique_pft, veg_, GM_T,
 def generate_plant_trait_limits(sp_map, sp_id, sp_ab, S_max, sp_pft, veg_, GM_T,
                                 PT_vars, PT_LB0, PT_UB0, I_cab, I_cs, I_lai,
                                 I_hc, I_vcmo, I_m, I_gmm, I_rnd, rng_mean,
-                                rng_sd, invtra_var=True, local_pft_lim=None):
+                                rng_sd, invtra_var=True):
     """Generate two dataset, one with minimum values, by truncating the
     distributions within a certain fracion of the bounds range and then
     a second with the remaining fraction of the variability range.
@@ -570,55 +570,43 @@ def generate_plant_trait_limits(sp_map, sp_id, sp_ab, S_max, sp_pft, veg_, GM_T,
     local_LB = dict() 
     local_UB = dict()    
     spfi_ = unique_pft[0]
-    for spfi_ in unique_pft:            
-        if ((local_pft_lim == None) or
-            (spfi_ not in local_pft_lim['local_av'].keys())):
-            # If not provided from outside, set the PFT-dependent local limits
-            # Set limits
-            Iv_ = veg_['pft_in'] .index(spfi_)
-            PT_LB_tmp = copy.deepcopy(PT_LB0)
-            PT_UB_tmp = copy.deepcopy(PT_UB0)
-            # Set Cab PFT-dependent bounds
-            PT_LB_tmp[I_cab] = veg_['Cab_min'][Iv_]        
-            PT_UB_tmp[I_cab] = veg_['Cab_max'][Iv_]
-            # Set LAI PFT-dependent bounds        
-            PT_UB_tmp[I_lai] = veg_['LAI_max'][Iv_]
-            # Compute hc bounds as a function of LAI bounds
-            PT_LB_tmp[I_hc] = compute_hc(veg_, Iv_, PT_LB_tmp[I_lai])
-            PT_UB_tmp[I_hc] = compute_hc(veg_, Iv_, PT_UB_tmp[I_lai]) 
-            # Compute Vcmo bounds as a function of Cab bounds
-            PT_LB_tmp[I_vcmo] = compute_Vcmo(veg_, Iv_, PT_LB_tmp[I_cab])
-            PT_UB_tmp[I_vcmo] = compute_Vcmo(veg_, Iv_, PT_UB_tmp[I_cab])
-            # Set m PFT-dependent bounds
-            PT_LB_tmp[I_m] = np.maximum(
-                veg_['m_BB_Miner_mean'][Iv_] - 2.96 *
-                veg_['m_BB_Miner_std'][Iv_], PT_LB0[I_m])
-            PT_UB_tmp[I_m] = np.minimum(
-                veg_['m_BB_Miner_mean'][Iv_] + 2.96 *
-                veg_['m_BB_Miner_std'][Iv_], PT_UB0[I_m])
-            # Set a random PFT mean value within the bounds. Get the average of 
-            # prevent extreme values while keeping some variability
-            local_av[spfi_] = np.mean(generate_PT(
-                GM_T, 100, PT_LB_tmp, PT_UB_tmp, PT_LB0, PT_UB0, veg_,
-                Iv_, I_cab, I_lai, I_hc, I_vcmo, I_gmm, I_rnd, overs_=5
-                )[np.random.randint(0, 100, 3)], axis=0)
-            
-            # Ensure a relatively centered LAI value for the treshold
-            local_av[spfi_][I_lai] = np.min(
-                (np.max((1.5, local_av[spfi_][I_lai])),
-                 local_av[spfi_][I_lai] * .75))
-            
-            # Generate range of variability around it
-            FB_ = np.random.uniform(.1, .4, 1)[0] * (PT_UB_tmp - PT_LB_tmp)
-            local_LB[spfi_] = np.max((PT_LB_tmp, local_av[spfi_] - FB_), axis=0)
-            local_UB[spfi_] = np.min((PT_UB_tmp, local_av[spfi_] + FB_), axis=0)
-
-        else:
-            # If provided exgernally, copy the PFT-dependent local limits
-            local_av[spfi_] = copy.deepcopy(local_pft_lim['local_av'][spfi_])
-            local_LB[spfi_] = copy.deepcopy(local_pft_lim['local_LB'][spfi_])
-            local_UB[spfi_] = copy.deepcopy(local_pft_lim['local_UB'][spfi_])
-            
+    for spfi_ in unique_pft:
+        # Set limits
+        Iv_ = veg_['pft_in'] .index(spfi_)
+        PT_LB_tmp = copy.deepcopy(PT_LB0)
+        PT_UB_tmp = copy.deepcopy(PT_UB0)
+        # Set Cab PFT-dependent bounds
+        PT_LB_tmp[I_cab] = veg_['Cab_min'][Iv_]        
+        PT_UB_tmp[I_cab] = veg_['Cab_max'][Iv_]
+        # Set LAI PFT-dependent bounds        
+        PT_UB_tmp[I_lai] = veg_['LAI_max'][Iv_]
+        # Compute hc bounds as a function of LAI bounds
+        PT_LB_tmp[I_hc] = compute_hc(veg_, Iv_, PT_LB_tmp[I_lai])
+        PT_UB_tmp[I_hc] = compute_hc(veg_, Iv_, PT_UB_tmp[I_lai]) 
+        # Compute Vcmo bounds as a function of Cab bounds
+        PT_LB_tmp[I_vcmo] = compute_Vcmo(veg_, Iv_, PT_LB_tmp[I_cab])
+        PT_UB_tmp[I_vcmo] = compute_Vcmo(veg_, Iv_, PT_UB_tmp[I_cab])
+        # Set m PFT-dependent bounds
+        PT_LB_tmp[I_m] = np.maximum(veg_['m_BB_Miner_mean'][Iv_] - 2.96 *
+                                    veg_['m_BB_Miner_std'][Iv_], PT_LB0[I_m])
+        PT_UB_tmp[I_m] = np.minimum(veg_['m_BB_Miner_mean'][Iv_] + 2.96 *
+                                    veg_['m_BB_Miner_std'][Iv_], PT_UB0[I_m])
+        # Set a random PFT mean value within the bounds. Get the average of 
+        # prevent extreme values while keeping some variability
+        local_av[spfi_] = np.mean(generate_PT(
+            GM_T, 100, PT_LB_tmp, PT_UB_tmp, PT_LB0, PT_UB0, veg_,
+            Iv_, I_cab, I_lai, I_hc, I_vcmo, I_gmm, I_rnd, overs_=5
+            )[np.random.randint(0, 100, 3)], axis=0)
+        
+        # Ensure a relatively centered LAI value for the treshold
+        local_av[spfi_][I_lai] = np.min((np.max((1.5, local_av[spfi_][I_lai])),
+                                         local_av[spfi_][I_lai] * .75))
+        
+        # Generate range of variability around it
+        FB_ = np.random.uniform(.1, .4, 1)[0] * (PT_UB_tmp - PT_LB_tmp)
+        local_LB[spfi_] = np.max((PT_LB_tmp, local_av[spfi_] - FB_), axis=0)
+        local_UB[spfi_] = np.min((PT_UB_tmp, local_av[spfi_] + FB_), axis=0)
+        
     # Set number of dissimilar species so that is the same for both min and max
     # values
     num_dis = int(np.random.random(1)[0] * S_max)
@@ -723,8 +711,7 @@ def generate_plant_trait_limits(sp_map, sp_id, sp_ab, S_max, sp_pft, veg_, GM_T,
             # print(np.max(np.abs(PT_map_min_out[I_] - PT_map_min[I_])))
     PT_map_delta_out = PT_map_max_out - PT_map_min_out
 
-    return (PT_map_min_out, PT_map_max_out, PT_map_delta_out, num_dis,
-            local_av, local_LB, local_UB)
+    return (PT_map_min_out, PT_map_max_out, PT_map_delta_out, num_dis)
 
 
 def truncate_gauss_noise(x_, sigma_, mu_=1., lb=-np.inf, ub=np.inf):

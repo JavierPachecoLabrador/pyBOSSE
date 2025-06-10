@@ -259,23 +259,21 @@ def do_show_bosse_map(im_, title_lb='BOSSE simulation', xlb='x [pixel]',
 
 # Plot the Plant Funcitonal Types map
 def do_plot_pft_map(im_, veg_, title_lb='BOSSE simulation', xlb='x [pixel]',
-                      ylb='y [pixel]', add_colorbar=False, cmap=None,
+                      ylb='y [pixel]', add_colorbar=True, cmap='viridis',
                       fname=None, plt_show=False):
-    
-    # Define a PFT-dedicated color map
-    cmap_pft=mcolors.ListedColormap(veg_['pft_col'])
-    
     # Generate the PFT map
     fig, ax = do_show_bosse_map(im_, title_lb=title_lb, xlb=xlb, ylb=ylb,
-                      add_colorbar=add_colorbar, cmap=cmap_pft, fname=None,
-                      plt_show=plt_show, return_fig_ax=True)
+                      add_colorbar=add_colorbar, cmap=cmap, fname=None,
+                      plt_show=True, return_fig_ax=True)
     
     # Generate the colorbar
     bounds = np.arange(len(veg_['pft_in']) + 1).tolist()
     norm = mcolors.BoundaryNorm(bounds, len(veg_['pft_in']),
                                 extend='neither')
     
-    cbar = plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap_pft), ax=ax)
+    cbar = plt.colorbar(cm.ScalarMappable(
+        norm=norm, cmap=mcolors.ListedColormap(veg_['pft_col'])),
+                        ax=ax)
     cbar.set_ticks([float(i_) + .5 for i_ in bounds[:-1]])
     cbar.set_ticklabels(veg_['pft_in'], fontsize=8)
     

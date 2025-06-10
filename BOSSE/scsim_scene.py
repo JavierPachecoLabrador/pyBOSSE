@@ -685,7 +685,7 @@ def scene_generator(simnum_, seednum_, inputs_, paths_, scsz_, X_, all_vars,
                     I_cs, I_lai, I_hc, I_vcmo, I_m, I_pt, I_gmm, I_rnd, I_sf,
                     I_soil, I_smc, I_fc, I_met, I_rss, I_rssl, I_ang, veg_,
                     P_pft, GM_T, reco_, M_rss, meteo_, meteo_av, meteo_av30,
-                    meteo_mdy, ts_days, indx_mdy, local_pft_lim=None):
+                    meteo_mdy, ts_days, indx_mdy):
     # -------------------------------------------------------------------------
     # Seed RNG to generate sepecies maps and soil parameters
     np.random.seed((inputs_['rseed_num'] + 1) * (seednum_ + 2) * 10000)
@@ -727,12 +727,11 @@ def scene_generator(simnum_, seednum_, inputs_, paths_, scsz_, X_, all_vars,
                                       (seednum_ + 10) * 10)
 
     # Generate min and max plant trait maps
-    (PT_map_min, PT_map_max, PT_map_delta, num_dis, local_av, local_LB,
-     local_UB) = (
+    PT_map_min, PT_map_max, PT_map_delta, num_dis = (
         sp.generate_plant_trait_limits(
             sp_map, sp_id, sp_ab, S_max, sp_pft, veg_, GM_T, PT_vars, PT_LB,
             PT_UB, I_cab, I_cs, I_lai, I_hc, I_vcmo, I_m, I_gmm, I_rnd,
-            rng_intra_sp_mean, rng_intra_sp_var, local_pft_lim=local_pft_lim))
+            rng_intra_sp_mean, rng_intra_sp_var))
 
     # -------------------------------------------------------------------------
     # Reseed RNG to ensure same properties for maps with different features
@@ -791,15 +790,14 @@ def scene_generator(simnum_, seednum_, inputs_, paths_, scsz_, X_, all_vars,
            sp_id,  sp_pft, PT_map_min, PT_map_max, PT_map_delta, num_dis,
            reco_P, GSI_all, GSI_wav, GSI_wav_param, GSI_rin, GSI_rin_param,
            GSI_tcol, GSI_tcol_param, GSI_twrm, GSI_twrm_param, PT_mean, PT_min,
-           PT_max, local_av, local_LB, local_UB, coulds_map)
+           PT_max, coulds_map)
 
 
 def create_scene_data(paths_, inputs_, simnum_, seednum_, scsz_, X0_, all_vars,
                       PT_vars, PT_LB, PT_UB, Soil_vars, Soil_LB, Soil_UB, I_cab,
                       I_cs, I_lai, I_hc, I_vcmo, I_m, I_pt, I_gmm, I_rnd, I_sf,
                       I_soil, I_smc, I_fc, I_met, I_rss, I_rssl, I_ang, veg_,
-                      P_pft, GM_T, reco_, M_rss, minLAImax=1.,
-                      local_pft_lim=None):
+                      P_pft, GM_T, reco_, M_rss, minLAImax=1.):
     
     # Define the variable used to seed the random number generators
     if seednum_ == None:
@@ -832,14 +830,13 @@ def create_scene_data(paths_, inputs_, simnum_, seednum_, scsz_, X0_, all_vars,
     (X_, meteo_, meteo_av, meteo_av30, sp_map, sp_pft, S_max, sp_ab, sp_id,
      sp_pft, PT_map_min, PT_map_max, PT_map_delta, num_dis, reco_P, GSI_all,
     GSI_wav, GSI_wav_param, GSI_rin, GSI_rin_param, GSI_tcol, GSI_tcol_param,
-    GSI_twrm, GSI_twrm_param, PT_mean, PT_min, PT_max, local_av, local_LB,
-    local_UB, coulds_map
+    GSI_twrm, GSI_twrm_param, PT_mean, PT_min, PT_max,coulds_map
     ) = scene_generator(
         simnum_, seednum_, inputs_, paths_, scsz_, X0_, all_vars, PT_vars,
         PT_LB, PT_UB, Soil_vars, Soil_LB, Soil_UB, I_cab, I_cs, I_lai, I_hc,
         I_vcmo, I_m, I_pt, I_gmm, I_rnd, I_sf, I_soil, I_smc, I_fc, I_met,
         I_rss, I_rssl, I_ang, veg_, P_pft, GM_T, reco_, M_rss, meteo_, meteo_av,
-        meteo_av30, meteo_mdy, ts_days, indx_mdy, local_pft_lim=local_pft_lim)
+        meteo_av30, meteo_mdy, ts_days, indx_mdy)
     if inputs_['verbose']:
         print_et('\t\t', time.time() - t0)
     
@@ -848,4 +845,4 @@ def create_scene_data(paths_, inputs_, simnum_, seednum_, scsz_, X0_, all_vars,
            sp_pft, PT_map_min, PT_map_max, PT_map_delta, num_dis, reco_P,
            GSI_all, GSI_wav, GSI_wav_param, GSI_rin, GSI_rin_param, GSI_tcol,
            GSI_tcol_param, GSI_twrm, GSI_twrm_param, PT_mean, PT_min, PT_max,
-           local_av, local_LB, local_UB, coulds_map)
+           coulds_map)
