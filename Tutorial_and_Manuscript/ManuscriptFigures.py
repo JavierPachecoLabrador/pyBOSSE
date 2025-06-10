@@ -877,16 +877,16 @@ print_dict(inputs_, 'inputs')
 bosse_M = BosseModel(inputs_, paths_)
 bosse_spatial_patterns = bosse_M.get_input_descriptors('sp_pattern')
 
-# %% Figure 3
-fig_name = 'Fig_3.png'
-plot_GSI(output_folder + fig_name, bosse_M)
+# %% Figure 2
+fig_name = 'Fig_2.png'
+if False and os.path.isfile(output_folder + fig_name) is False:
+    plot_GSI(output_folder + fig_name, bosse_M)
 
 
 # %% Figure 3
 fig_name = 'Fig_4.png'
 if os.path.isfile(output_folder + fig_name) is False:
-    plt_sp_patterns(paths_, inputs_, output_folder + fig_name,
-                    pth_inputs=path_inputs)
+    plt_sp_patterns(paths_, inputs_, output_folder + fig_name)
 
 # %% Figure 4
 fig_name = 'Fig_5.png'
