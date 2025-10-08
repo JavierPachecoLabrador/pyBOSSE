@@ -135,7 +135,7 @@ class BosseModel:
    
         (self.meteo_, self.meteo_av, self.meteo_av30, self.meteo_mdy,
          self.meta_met, self.ts_length, self.ts_days, self.indx_day,
-         self.indx_mdy, self.X_, self.sp_map, self.sp_pft, self.S_max,
+         self.indx_mdy, self.X_, self.sp_map, self.pft_map, self.S_max,
          self.sp_ab, self.sp_id, self.sp_pft, self.PT_map_min, self.PT_map_max,
          self.PT_map_delta, self.num_dis, self.reco_P, self.GSI_all,
          self.GSI_wav, self.GSI_wav_param, self.GSI_rin, self.GSI_rin_param,
@@ -416,27 +416,29 @@ class BosseModel:
     # Plot any BOSSE 2D Scene map
     def show_bosse_map(self, im_, title_lb='BOSSE simulation', xlb='x [pixel]',
                       ylb='y [pixel]', add_colorbar=True, cmap='viridis',
-                      plt_show=False, fname=None, ):
+                      plt_show=False, fname=None, ax=None):
         pl.do_show_bosse_map(im_, title_lb=title_lb, xlb=xlb, ylb=ylb,
                              add_colorbar=add_colorbar, cmap=cmap,
-                             plt_show=plt_show, fname=fname)
+                             plt_show=plt_show, fname=fname,  ax=ax)
 
     def show_pft_map(self, title_lb='BOSSE Plant Functional Types map',
                      xlb='x [pixel]', ylb='y [pixel]', fname=None,
-                     plt_show=False):
-        pl.do_plot_pft_map(self.sp_map, self.veg_, title_lb=title_lb,
-                           xlb=xlb, ylb=ylb, add_colorbar=False,
-                           plt_show=plt_show, fname=fname)
+                     add_colorbar=True, plt_show=False, ax=None):
+        pl.do_plot_pft_map(self.pft_map, self.veg_, title_lb=title_lb,
+                           xlb=xlb, ylb=ylb, add_colorbar=add_colorbar,
+                           plt_show=plt_show, fname=fname, ax=ax)
 
     def show_species_map(self, title_lb='BOSSE Species map',
                          xlb='x [pixel]', ylb='y [pixel]', add_colorbar=True,
-                         cmap='tab20', fname=None, plt_show=False):
-        pl.do_show_bosse_map(self.sp_map, title_lb=title_lb, xlb=xlb, ylb=ylb,
-                           add_colorbar=add_colorbar, cmap=cmap,
-                           plt_show=plt_show, fname=fname)
+                         cmap=None, fname=None, plt_show=False, ax=None):
+        pl.do_plot_species_map(self.sp_map, self.sp_id, title_lb=title_lb,
+                               xlb=xlb, ylb=ylb, add_colorbar=add_colorbar,
+                               cmap=cmap, plt_show=plt_show, fname=fname, ax=ax)
     
     # Plot the spectra of each pixel colored by species
     def plot_species_spectra(self, wvl, X_, ylbl, cmp_=None, plt_show=False,
-                             fname=None):        
+                             title_='Hyperspectral reflectance colored per species',
+                             fname=None, ax=None):        
         pl.do_plot_species_spectra(self.sp_map, self.sp_id, wvl, X_, ylbl,
-                                   cmp_=cmp_, plt_show=plt_show, fname=fname)
+                                   cmp_=cmp_, plt_show=plt_show, fname=fname,
+                                   ax=ax, title_=title_)

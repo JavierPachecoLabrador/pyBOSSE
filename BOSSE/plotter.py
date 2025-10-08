@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 
+import distinctipy
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib import colormaps as mcmaps
@@ -127,6 +128,22 @@ def get_variable_label(var_name, subscript=None):
     return(var_lab)
 
 
+def get_species_cmap(N=None, as_cmap=True):
+    cmap = (distinctipy.get_colors(30, pastel_factor=0.5, rng=0) +
+            distinctipy.get_colors(30, pastel_factor=0.2, rng=0) +
+            distinctipy.get_colors(30, pastel_factor=0.8, rng=0) +
+            distinctipy.get_colors(30, pastel_factor=0, rng=0) +
+            distinctipy.get_colors(30, pastel_factor=1, rng=0))
+    
+    if N != None:
+        cmap = cmap[:N]
+        
+    if as_cmap:
+        cmap = mcolors.ListedColormap(cmap)
+    
+    return(cmap)
+
+
 # %% 3) Plot meteorological data
 def do_plot_rss_model(mat_, cmap='viridis', fname=None, plt_show=False):
     fig = plt.figure(figsize=(7, 4.8))
@@ -235,9 +252,14 @@ def do_plot_meteo_ts(meteo_, plt_show=False, fname_=None):
 
 # Plot the maps
 def do_show_bosse_map(im_, title_lb='BOSSE simulation', xlb='x [pixel]',
-                      ylb='y [pixel]', add_colorbar=True, cmap='viridis',
-                      fname=None, plt_show=False, return_fig_ax=False):
-    fig, ax = plt.subplots(1, 1)
+                      ylb='y [pixel]', add_colorbar=True, cmap=None,
+                      fname=None, plt_show=False, return_fig_ax=False,
+                      ax=None):
+    if ax == None:
+        fig, ax = plt.subplots(1, 1)
+    else:
+        fig = plt.gcf()
+
     cax = ax.imshow(im_, cmap=cmap)
     ax.set_title(title_lb)
     ax.set_xlabel(xlb)
@@ -259,52 +281,70 @@ def do_show_bosse_map(im_, title_lb='BOSSE simulation', xlb='x [pixel]',
 
 # Plot the Plant Funcitonal Types map
 def do_plot_pft_map(im_, veg_, title_lb='BOSSE simulation', xlb='x [pixel]',
-                      ylb='y [pixel]', add_colorbar=False, cmap=None,
-                      fname=None, plt_show=False):
+                    ylb='y [pixel]', add_colorbar=False,
+                    fname=None, plt_show=False, ax=None):
     
     # Define a PFT-dedicated color map
     cmap_pft=mcolors.ListedColormap(veg_['pft_col'])
     
     # Generate the PFT map
-    fig, ax = do_show_bosse_map(im_, title_lb=title_lb, xlb=xlb, ylb=ylb,
-                      add_colorbar=add_colorbar, cmap=cmap_pft, fname=None,
-                      plt_show=plt_show, return_fig_ax=True)
+    fig, ax_out = do_show_bosse_map(
+        im_, title_lb=title_lb, xlb=xlb, ylb=ylb, add_colorbar=False,
+        cmap=cmap_pft, fname=None, plt_show=plt_show, return_fig_ax=True,
+        ax=ax)
     
     # Generate the colorbar
-    bounds = np.arange(len(veg_['pft_in']) + 1).tolist()
-    norm = mcolors.BoundaryNorm(bounds, len(veg_['pft_in']),
-                                extend='neither')
-    
-    cbar = plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap_pft), ax=ax)
-    cbar.set_ticks([float(i_) + .5 for i_ in bounds[:-1]])
-    cbar.set_ticklabels(veg_['pft_in'], fontsize=8)
+    if add_colorbar:
+        bounds = np.arange(len(veg_['pft_in']) + 1).tolist()
+        norm = mcolors.BoundaryNorm(bounds, len(veg_['pft_in']),
+                                    extend='neither')
+        cbar = plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap_pft),
+                            ax=ax_out)
+        cbar.set_ticks([float(i_) + .5 for i_ in bounds[:-1]])
+        cbar.set_ticklabels(veg_['pft_in'], fontsize=8)
+
+        plt.tight_layout()
     
     if fname != None:
-        fig.savefig(fname, dpi=300)
+        plt.savefig(fname, dpi=300)
 
     if plt_show:
         plt.show(block=False)
     else:
         plt.close()
+        
+def do_plot_species_map(im_, sp_id, title_lb='BOSSE Species map',
+                        xlb='x [pixel]', ylb='y [pixel]', add_colorbar=False,
+                        cmap=None, fname=None, plt_show=False, ax=None):
+    if  cmap == None:
+        cmap = get_species_cmap(N=len(sp_id), as_cmap=True)
 
+    do_show_bosse_map(im_, title_lb=title_lb, xlb=xlb,
+                      ylb=ylb, add_colorbar=add_colorbar, cmap=cmap,
+                      fname=fname, plt_show=plt_show, return_fig_ax=False,
+                      ax=ax)
+    
 
 # Plot species'spectra
 def do_plot_species_spectra(sp_map, sp_id, wvl, X_, ylbl, cmp_=None, fname=None,
-                            plt_show=False):
+                            title_='Hyperspectral reflectance colored per species',
+                            plt_show=False, ax=None, ):
     # Plot the hyperspectral reflectance factors per species
     if  cmp_ == None:
-        cmp_ = mcmaps['tab20']
+        cmp_ = get_species_cmap(N=len(sp_id), as_cmap=False)
 
-    plt.figure()
-    plt.grid()
+    if ax == None:
+        fig, ax = plt.subplots(1, 1)
+        
+    ax.grid()
     i_, id_ = 0, 0
     for i_, id_ in enumerate(sp_id):
         I_ = sp_map == id_
-        plt.plot(wvl, X_[I_].T, c=cmp_(i_))
-    plt.xlabel('$\\lambda$ [nm]')
-    plt.ylabel(ylbl)
-    plt.xlim(wvl[0], wvl[-1])
-    plt.title('Hyperspectral reflectance colored per species')
+        ax.plot(wvl, X_[I_].T, c=cmp_[i_])
+    ax.set_xlabel('$\\lambda$ [nm]')
+    ax.set_ylabel(ylbl)
+    ax.set_xlim(wvl[0], wvl[-1])
+    ax.set_title(title_)
     plt.tight_layout()
     
     if fname != None:

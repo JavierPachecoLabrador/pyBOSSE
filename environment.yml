@@ -27,3 +27,4 @@ dependencies:
         - python-rle
         - nlmpy
         - git+https://github.com/JavierPachecoLabrador/pyGNDiv-master
+        - distinctipy

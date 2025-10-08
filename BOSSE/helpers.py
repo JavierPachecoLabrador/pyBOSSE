@@ -682,7 +682,7 @@ def benchmark_bosse_speed_print(df_):
 
 
 def benchmark_bosse_speed(BosseModel, inputs_, paths_, out_fname=None,
-                          n_samples=10, n_days=12, bosse_spatial_patterns=None,
+                          n_samples=1, n_days=12, bosse_spatial_patterns=None,
                           bosse_climatic_zones=None):
     
     print('Benchmarking BOSSE running speed. This might take some minutes')
@@ -701,8 +701,8 @@ def benchmark_bosse_speed(BosseModel, inputs_, paths_, out_fname=None,
     num_runs = (len(bosse_spatial_patterns) * len(bosse_climatic_zones) *
                 n_samples)
     
-    print(f'Benchmark test: {num_runs} scenes in total ' +
-          '({n_days} days per scene)')
+    print(f'Starting BOSSE Benchmark test: {num_runs} scenes in total, ' +
+          f'with ({n_days} days per scene)...')
     
     # Preallocate
     df_ = pd.DataFrame(
@@ -777,8 +777,17 @@ def benchmark_bosse_speed(BosseModel, inputs_, paths_, out_fname=None,
                 df_.loc[k_, 'ecofun_simulation_etime_s'] = (
                     (time.time() - t0) / n_days)
                 
+                # Print scene times
                 print(f'({k_ + 1} / {num_runs}):', kz_, sp_, i_, 'etime =',
                       time.time() - t00, 'seconds')
+                print('\t' + 'Scene Initialization time: %.2f seconds' %
+                      df_.loc[k_, 'initialization_etime_s'])
+                print('\t\t' + 'Imagery simulation time (PT, R, F, LST and ' +
+                      'OT): %.2f seconds / day' %
+                      df_.loc[k_, 'imagery_simulation_etime_s'])
+                print('\t\t' + 'Ecosystem functions simulation time (24h): ' +
+                      '%.2f seconds  / day' %
+                      df_.loc[k_, 'ecofun_simulation_etime_s'])
 
                 k_ += 1
 

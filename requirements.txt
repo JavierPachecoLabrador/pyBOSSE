@@ -1,5 +1,8 @@
-python=3.11
+# First create the environment as follows:
+# 	conda create --name pybosse python=3.11 --yes
+# 	conda activate pybosse
 dask
+distinctipy
 git+https://github.com/JavierPachecoLabrador/pyGNDiv-master
 h5netcdf
 joblib
@@ -9,12 +12,12 @@ netCDF4
 notebook
 nlmpy
 numpy
-pandas=2.1.1
+pandas == 2.1.1
 pyet
 python-rle
-python-wget
+wget
 scipy
-scikit-learn=1.3.1
+scikit-learn == 1.3.1
 scikit-image
 seaborn
 regex

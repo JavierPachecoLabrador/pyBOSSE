@@ -19,7 +19,7 @@ from BOSSE.scsim_emulation import MPL_pred, correct_var_names
 from BOSSE import scsim_species as sp
 from BOSSE import scsim_gsi_model as gsi
 from BOSSE import scsim_meteo as mt
-from BOSSE.plotter import do_plot_meteo_ts, do_show_bosse_map, do_plot_pft_map
+from BOSSE.plotter import do_plot_meteo_ts, do_plot_pft_map, do_plot_species_map
 
 # %% 1) Ancillary functions
 def update_wr(meteo__, meteo_av_, meteo_av30_, FC_):
@@ -131,22 +131,35 @@ def generate_map(simnum_, inputs_, paths_, P_pft, veg_, meteo_):
     for i_, idi_ in enumerate(is_):
         I_ = sp_map_tmp == 1E5 + idi_
         sp_map[I_] = i_
-
+    
+    # Clear the veg dictionary removing the PFTs that are not present in the
+    # scene
+    Ipft_ = np.zeros(len(veg_['pft_in']), dtype=bool)
+    for unique_pft in np.unique(sp_pft):
+        Ipft_[veg_['pft_in'].index(unique_pft)] = True
+    
+    for k_ in veg_.keys():
+        # print(k_, veg_[k_])
+        if (isinstance(veg_[k_], list)) and (len(veg_[k_]) == len(Ipft_)):
+            veg_[k_] = [val_ for i_, val_ in enumerate(veg_[k_]) if Ipft_[i_]] 
+    
+    
     # Generate the PFT map from the species
     (pft_map, pft_col) = generate_pft_map(sp_map, sp_id, veg_, sp_pft)
+
     
     if inputs_['inspect']:
         title_lb = ('Scene %d. Smax = %d. %s' % (
             simnum_, s_max, inputs_['sp_pattern']))
         fname = (paths_['2_out_folder_plots'] +'Map_species_%s' % (
             zone_snum(simnum_, inputs_['clim_zone'])))
-        do_show_bosse_map(sp_map, title_lb=title_lb, add_colorbar=True,
-                          cmap='tab20', fname=fname, plt_show=False)
+        do_plot_species_map(sp_map, sp_id, title_lb=title_lb, add_colorbar=True,
+                          fname=fname, plt_show=False)
         
         fname = (paths_['2_out_folder_plots'] +'Map_PFT_%s' % (
             zone_snum(simnum_, inputs_['clim_zone'])))
         do_plot_pft_map(pft_col, veg_, title_lb=title_lb, add_colorbar=False,
-                        cmap='viridis', fname=fname, plt_show=False)
+                        fname=fname, plt_show=False)
 
     return(sp_map, pft_map, s_max, sp_ab, sp_id, sp_pft, soil_map)
 
@@ -194,6 +207,12 @@ def filter_pft_meteo(veg_, P_pft, meteo_):
         
     pft_ok = [veg_['pft_in'][i_] for i_, sel_ in enumerate(Ipft_) if sel_]
     
+    # Remove PFTs that might not be in the P_pft
+    Ipft_in = [i_ for i_, pf in enumerate(P_pft.iloc[:, 0])
+               if (pf in veg_['pft_in'])]
+    P_pft = P_pft.loc[Ipft_in].reset_index(drop=True)
+    
+    # Apply the selection
     P_pft_ok = P_pft[Ipft_]
 
     return (pft_ok, P_pft_ok)
@@ -825,26 +844,26 @@ def create_scene_data(paths_, inputs_, simnum_, seednum_, scsz_, X0_, all_vars,
     if inputs_['verbose']:
         print_et('\t\t', time.time() - t0)
 
-    #  Generate 
+    #  Generate scene
     if inputs_['verbose']:
         print('\tGenerating the Scene...')
         t0 = time.time()
-    (X_, meteo_, meteo_av, meteo_av30, sp_map, sp_pft, S_max, sp_ab, sp_id,
+    (X_, meteo_, meteo_av, meteo_av30, sp_map, pft_map, S_max, sp_ab, sp_id,
      sp_pft, PT_map_min, PT_map_max, PT_map_delta, num_dis, reco_P, GSI_all,
-    GSI_wav, GSI_wav_param, GSI_rin, GSI_rin_param, GSI_tcol, GSI_tcol_param,
-    GSI_twrm, GSI_twrm_param, PT_mean, PT_min, PT_max, local_av, local_LB,
-    local_UB, coulds_map
-    ) = scene_generator(
-        simnum_, seednum_, inputs_, paths_, scsz_, X0_, all_vars, PT_vars,
-        PT_LB, PT_UB, Soil_vars, Soil_LB, Soil_UB, I_cab, I_cs, I_lai, I_hc,
-        I_vcmo, I_m, I_pt, I_gmm, I_rnd, I_sf, I_soil, I_smc, I_fc, I_met,
-        I_rss, I_rssl, I_ang, veg_, P_pft, GM_T, reco_, M_rss, meteo_, meteo_av,
-        meteo_av30, meteo_mdy, ts_days, indx_mdy, local_pft_lim=local_pft_lim)
+     GSI_wav, GSI_wav_param, GSI_rin, GSI_rin_param, GSI_tcol, GSI_tcol_param,
+     GSI_twrm, GSI_twrm_param, PT_mean, PT_min, PT_max, local_av, local_LB,
+     local_UB, coulds_map
+     ) = scene_generator(
+         simnum_, seednum_, inputs_, paths_, scsz_, X0_, all_vars, PT_vars,
+         PT_LB, PT_UB, Soil_vars, Soil_LB, Soil_UB, I_cab, I_cs, I_lai, I_hc,
+         I_vcmo, I_m, I_pt, I_gmm, I_rnd, I_sf, I_soil, I_smc, I_fc, I_met,
+         I_rss, I_rssl, I_ang, veg_, P_pft, GM_T, reco_, M_rss, meteo_, meteo_av,
+         meteo_av30, meteo_mdy, ts_days, indx_mdy, local_pft_lim=local_pft_lim)
     if inputs_['verbose']:
         print_et('\t\t', time.time() - t0)
     
     return(meteo_, meteo_av, meteo_av30, meteo_mdy, meta_met, ts_length,
-           ts_days, indx_day, indx_mdy, X_, sp_map, sp_pft, S_max, sp_ab, sp_id,
+           ts_days, indx_day, indx_mdy, X_, sp_map, pft_map, S_max, sp_ab, sp_id,
            sp_pft, PT_map_min, PT_map_max, PT_map_delta, num_dis, reco_P,
            GSI_all, GSI_wav, GSI_wav_param, GSI_rin, GSI_rin_param, GSI_tcol,
            GSI_tcol_param, GSI_twrm, GSI_twrm_param, PT_mean, PT_min, PT_max,
