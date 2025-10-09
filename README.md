@@ -84,7 +84,7 @@ from BOSSE.bosse import BosseModel
 - /PFTdist: Relative abundances of the different plant functional types in each Köppen Climatic Zone
 
 ## Main Scientific References
-- Pacheco-Labrador, J., Gomarasca, U., Pabon-Moreno, D. E., Li, W., Migliavacca, M., Jung, M., and Duveiller, G. (submitted). BOSSE v1.0: the Biodiversity Observing System Simulation Experiment. Geoscientific Model Developpment.
+- Pacheco-Labrador, J., Gomarasca, U., Pabon-Moreno, D. E., Li, W., Migliavacca, M., Jung, M., and Duveiller, G. (submitted). BOSSE v1.0: the Biodiversity Observing System Simulation Experiment. Geoscientific Model Developpment, EGUsphere [preprint], https://doi.org/10.5194/egusphere-2025-318
 
 - Pacheco-Labrador, J., Migliavacca, M., Ma, X., Mahecha, M.D., Carvalhais, N., Weber, U., Benavides, R., Bouriaud, O., Barnoaiea, I., Coomes, D.A., Bohn, F.J., Kraemer, G., Heiden, U., Huth, A., & Wirth, C. (2022). Challenging the link between functional and spectral diversity with radiative transfer modeling and data. Remote Sensing of Environment, 280, 113170. https://doi.org/10.1016/j.rse.2022.113170
 
