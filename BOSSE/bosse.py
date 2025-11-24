@@ -273,11 +273,14 @@ class BosseModel:
 
     # Method to predict reflectance factors
     def pred_refl_factors(self, X_, scsz_, sp_res=100, rel_rand_noise=0.,
-                          abs_rand_noise=0., rand_seed=None):
+                          abs_rand_noise=0., rand_seed=None, chnk_metrics=None):
+        if not isinstance(scsz_, list):
+            scsz_ = [scsz_, scsz_]
+
         RF_ = rtm.spectral_pred(
             self.M_R, X_[:, :, self.M_R['I_']].reshape(-1, self.M_R['nI']),
-            check_input=False, out_shape=(scsz_, scsz_, len(self.M_R['wl'])),
-            sp_res=sp_res)
+            check_input=False, out_shape=(scsz_[0], scsz_[1], len(self.M_R['wl'])),
+            sp_res=sp_res, chnk_metrics=chnk_metrics)
 
         if np.any(rel_rand_noise > 0.) or np.any(abs_rand_noise > 0.):
             RF_ = self.add_random_noise(RF_, rel_rand_noise, abs_rand_noise,
@@ -307,10 +310,13 @@ class BosseModel:
     def pred_fluorescence_rad(self, X_, scsz_, out_sz, sp_res=100,
                               rel_rand_noise=0.,  abs_rand_noise=0.,
                               rand_seed=None):
+        if not isinstance(scsz_, list):
+            scsz_ = [scsz_, scsz_]
+
         if np.any(X_[:, :, self.I_rin] > 0):
             F_ = rtm.spectral_pred(
             self.M_F, X_[:, :, self.M_F['I_']].reshape(-1, self.M_F['nI']),
-                check_input=False, out_shape=(scsz_, scsz_,len(self.M_F['wl'])),
+                check_input=False, out_shape=(scsz_[0], scsz_[1],len(self.M_F['wl'])),
                 sp_res=sp_res)
                 # Avoid fluorescence when there is no light or LAI
             F_[F_ < 0.] = 0.
@@ -326,9 +332,12 @@ class BosseModel:
     # Method to predict land surface temperature
     def pred_landsurf_temp(self, X_, scsz_, sp_res=100, rel_rand_noise=0.,
                             abs_rand_noise=0., rand_seed=None):
+        if not isinstance(scsz_, list):
+            scsz_ = [scsz_, scsz_]
+        
         LST_ = rtm.spectral_pred(
             self.M_T, X_[:, :, self.M_T['I_']].reshape(-1, self.M_T['nI']),
-            check_input=False, out_shape=(scsz_, scsz_, len(self.M_T['wl'])),
+            check_input=False, out_shape=(scsz_[0], scsz_[1], len(self.M_T['wl'])),
             sp_res=sp_res)
 
         if np.any(rel_rand_noise > 0.) or np.all(abs_rand_noise > 0.):
