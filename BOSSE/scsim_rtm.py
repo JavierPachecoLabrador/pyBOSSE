@@ -90,6 +90,13 @@ def optical_trait_ret(M_, X_, out_shape=None, force_baresoil=False):
 
 
 # %% 2) Spatial
+def find_min_dist(x0, x):
+    abs_dif = np.abs(x0 - x)
+    loc = np.where(abs_dif == abs_dif.min())[0][0]
+
+    return(loc)
+
+
 def mirror_image(x_, factor_):
     # Compute how much buffer is needed, add some minimal size of 3 pixels
     bufw = max(0, compute_resampling_buffer(factor_))
@@ -237,10 +244,19 @@ def retrieve_scene_chunk_indices(num_chunk, sc_sz, chnk_pos,
         ind_c = np.where((center >= chnk_pos[num_chunk, 1]) *
                          (center <= min(chnk_pos[num_chunk, 1] +
                                         chnk_sz, sc_sz)))[0]
+        # Check that the chunk is not beyond the latest center point. This
+        # can happen when individual coordinatesa are provided, instead the
+        # chunk corner
+        if (ind_r.shape[0] == 0) and (chnk_pos[num_chunk, 0] > center.max()):
+            ind_r = np.array(
+                [center[find_min_dist(center, chnk_pos[num_chunk, 0])]])
+        if (ind_c.shape[0] == 0) and (chnk_pos[num_chunk, 1] > center.max()):
+            ind_c = np.array(
+                [center[find_min_dist(center, chnk_pos[num_chunk, 1])]])
 
         chnk_metrics['ori_size'] = [len(ind_r), len(ind_c)]
 
-    if np.any(ind_r) and np.any(ind_c):
+    if (ind_r.shape[0] > 0) and (ind_c.shape[0] > 0):
         # Generate the outputs as slices so that chunk values can be assigned to the cube
         ind_rows_out = slice(ind_r[0], ind_r[-1] + 1, 1)
         ind_cols_out = slice(ind_c[0], ind_c[-1] + 1, 1)
@@ -253,23 +269,27 @@ def retrieve_scene_chunk_indices(num_chunk, sc_sz, chnk_pos,
         chnk_metrics['ly_1'] = copy.deepcopy(chnk_pos[num_chunk, 0])
         chnk_metrics['by_1'] = max(chnk_pos[num_chunk, 0] - pixel_dist, 0)
         chnk_metrics['ly_2'] = chnk_pos[num_chunk, 0] + chnk_sz
-        chnk_metrics['by_2'] = min(chnk_pos[num_chunk, 0] + chnk_sz + pixel_dist, sc_sz)
+        chnk_metrics['by_2'] = min(chnk_pos[num_chunk, 0] + chnk_sz +
+                                   pixel_dist, sc_sz)
         chnk_metrics['lx_1'] = copy.deepcopy(chnk_pos[num_chunk, 1])
         chnk_metrics['bx_1'] = max(chnk_pos[num_chunk, 1] - pixel_dist, 0)
         chnk_metrics['lx_2'] = chnk_pos[num_chunk, 1] + chnk_sz
-        chnk_metrics['bx_2'] = min(chnk_pos[num_chunk, 1] + chnk_sz + pixel_dist, sc_sz)
+        chnk_metrics['bx_2'] = min(chnk_pos[num_chunk, 1] + chnk_sz +
+                                   pixel_dist, sc_sz)
 
         ind_rows_crop = np.arange(chnk_metrics['by_1'], chnk_metrics['by_2'])
         ind_cols_crop = np.arange(chnk_metrics['bx_1'], chnk_metrics['bx_2'])
     else:
-        raise ValueError('No resampling points within the chunk. Increase the size of the chunk')
+        raise ValueError('No resampling points within the chunk. Increase ' +
+                         'the size of the chunk')
 
     return(ind_rows_out, ind_cols_out, ind_rows_crop, ind_cols_crop, chnk_metrics)
 
 
 def retrieve_scene_chunk(X_, num_chunk, sc_sz, chnk_pos, chnk_sz, spat_res=100):
     (ind_rows_out, ind_cols_out, ind_rows_crop, ind_cols_crop, chnk_metrics
-     ) = retrieve_scene_chunk_indices(num_chunk, sc_sz, chnk_pos, chnk_sz, spat_res=spat_res)
+     ) = retrieve_scene_chunk_indices(num_chunk, sc_sz, chnk_pos, chnk_sz,
+                                      spat_res=spat_res)
 
     X_crop = X_[ind_rows_crop][:, ind_cols_crop]
 
@@ -292,6 +312,17 @@ def define_sampling_center(factor_, sz_):
     center = np.arange(-.5 + hstep, sz_ + .5 - hstep, 2 * hstep)
 
     return(hstep, center)
+
+
+def get_min_chunk_size(spat_res, scene_sz):
+    hstep, _ = define_sampling_center(spat_res, scene_sz)
+    chnk_sz = int(np.ceil(2 * hstep))
+
+    # Ensure it is larger than the distance between two pixel centers
+    if chnk_sz <= 2 * hstep:
+        chnk_sz += 1
+
+    return(chnk_sz)
 
 
 def prepare_upscaling(X_, factor_, ori_size):
@@ -327,14 +358,24 @@ def spatial_upscale(X_, factor_, type_='GaussPFT', chnk_metrics=None):
     # Shift the centre pixel points coordinates to account for the chunk counts;
     # the "centre_mirror" shift is also added later to these coordinates.
     center = np.round(center, 5)
-    center_x = (center[(center >= chnk_metrics['lx_1']) *
-                      (center <= chnk_metrics['lx_2'])] -
-                chnk_metrics['lx_1'] +
-                (chnk_metrics['lx_1'] - chnk_metrics['bx_1']))
-    center_y = (center[(center >= chnk_metrics['ly_1']) *
-                      (center <= chnk_metrics['ly_2'])] -
-                chnk_metrics['ly_1'] +
-                (chnk_metrics['ly_1'] - chnk_metrics['by_1']))
+    if ('center_x' in chnk_metrics) and ('center_y' in chnk_metrics):
+        center_x = np.array([
+            (center[find_min_dist(center, chnk_metrics['center_x'])] -
+             chnk_metrics['lx_1'] +
+             (chnk_metrics['lx_1'] - chnk_metrics['bx_1']))])
+        center_y = np.array([
+            (center[find_min_dist(center, chnk_metrics['center_y'])] -
+             chnk_metrics['ly_1'] +
+             (chnk_metrics['ly_1'] - chnk_metrics['by_1']))])
+    else:
+        center_x = (center[(center >= chnk_metrics['lx_1']) *
+                          (center <= chnk_metrics['lx_2'])] -
+                    chnk_metrics['lx_1'] +
+                    (chnk_metrics['lx_1'] - chnk_metrics['bx_1']))
+        center_y = (center[(center >= chnk_metrics['ly_1']) *
+                          (center <= chnk_metrics['ly_2'])] -
+                    chnk_metrics['ly_1'] +
+                    (chnk_metrics['ly_1'] - chnk_metrics['by_1']))
 
     # Define the output size and preallocate
     out_sz = [center_y.shape[0], center_x.shape[0]]
