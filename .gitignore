@@ -91,3 +91,6 @@ Output/
 *.gif
 *.bmp
 *.tif
+
+# Input files
+BOSSE_inputs/Meteo_ERA5Land/
