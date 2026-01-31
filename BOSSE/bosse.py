@@ -10,14 +10,14 @@ import time as time
 from BOSSE import scsim_scene as sc
 from BOSSE import scsim_species as sp
 from BOSSE import scsim_rtm as rtm
-from BOSSE.helpers import print_et
+from BOSSE.helpers import print_et, get_RSensor_bands, convolve_sensor
 import BOSSE.plotter as pl
 
 
 # %% Class BOSSE MODEL
 class BosseModel:
     # Class Initialization -----------------------------------------------------
-    def __init__(self, inputs_, paths_, RaoQ_w=3):
+    def __init__(self, inputs_, paths_, RaoQ_w=3, sensor_list=None):
         self.inputs_ = inputs_
         self.paths_ = paths_
         
@@ -29,6 +29,10 @@ class BosseModel:
         self.RaoQ_len = int(self.scsz_ / self.RaoQ_w)
         self.RaoQ_sz = self.RaoQ_len ** 2
 
+        # Define sensors spectral response function
+        self.sensor_srf = dict()
+        self.sensor_rmWVb = False
+
         # Load constants and generate the scene matrix (X_)
         (self.X0_, self.all_vars, self.all_vals, self.PT_vars, self.PT_LB,
          self.PT_UB, self.Soil_vars, self.Soil_LB, self.Soil_UB, self.I_cab,
@@ -39,11 +43,12 @@ class BosseModel:
 
         # Load models
         self.get_bosse_models(self.paths_, self.all_vars,
-                              self.inputs_['clim_zone'])
+                              self.inputs_['clim_zone'],
+                              sensor_list=sensor_list)
 
     # Method to load models
     def get_bosse_models(self, paths_, all_vars, clim_zone, sensor_='_Hy',
-                         no_crop=True):
+                         no_crop=True, sensor_list=None):
         # Get PFTs of the climatic zone
         self.P_pft = pd.read_csv((paths_['1_dest_PFTdist_folder'] + clim_zone +
                              '_freq.csv'), sep=';')
@@ -116,7 +121,11 @@ class BosseModel:
         plt_fname = paths_['1_ori_Irss_file'].replace('.mat', '.png')
         if (os.path.isfile(plt_fname) is False):
             self.plot_rss_model(mat_, cmap='viridis', plt_show=False,
-                                fname=plt_fname)        
+                                fname=plt_fname)
+        
+        # Load sensor spectral response functions
+        if sensor_list is not None:
+            self.import_sensor_srf(sensor_list)
 
     # Scene Initializaton ------------------------------------------------------
     # Method prepare the Scence
@@ -271,19 +280,40 @@ class BosseModel:
 
         return(signal_ + noise_)
 
+    # Method to import remote sensing sensor bands
+    def import_sensor_srf(self, sensor_list):
+        if (not isinstance(sensor_list, list)) and (isinstance(sensor_list, str)):
+            sensor_list = [sensor_list]
+        
+        for sen in sensor_list:
+            self.sensor_srf[sen] = get_RSensor_bands(
+                sen, self.paths_['0_sensors'], rmWVb=self.sensor_rmWVb)
+        
     # Method to predict reflectance factors
     def pred_refl_factors(self, X_, scsz_, sp_res=100, rel_rand_noise=0.,
-                          abs_rand_noise=0., rand_seed=None):
+                          abs_rand_noise=0., rand_seed=None, sensor=None,
+                          output_wvl=False):
         RF_ = rtm.spectral_pred(
             self.M_R, X_[:, :, self.M_R['I_']].reshape(-1, self.M_R['nI']),
             check_input=False, out_shape=(scsz_, scsz_, len(self.M_R['wl'])),
             sp_res=sp_res)
+        
+        # Convolve to sensor spectral features
+        if ((sensor is not None) and (sensor != '_Hy')):
+            RF_, wvl = convolve_sensor(sensor, self.paths_['0_sensors'], RF_,
+                                       rmWVb=self.sensor_rmWVb)
 
+        # Add uncertainty (random noise)
         if np.any(rel_rand_noise > 0.) or np.any(abs_rand_noise > 0.):
             RF_ = self.add_random_noise(RF_, rel_rand_noise, abs_rand_noise,
                                         rand_seed)
+            wvl_sensor = self.M_R['wl']
 
-        return(RF_)
+        if output_wvl:
+            return(RF_, wvl)
+        else:
+            return(RF_)
+
     
     # Method to predict optical traits from reflectance factors
     def pred_opt_traits(self, RFx_, out_sz, rel_rand_noise=0., 
@@ -386,7 +416,6 @@ class BosseModel:
         return(time_out, GPP, Rb, Rb_15C, NEP, LUE, LUEgreen, lE, T, H, Rn, G,
          ustar)
         
-
     # Methods to plot data -----------------------------------------------------
     # Methods to get variable's symbols and units, and label
     def get_variable_symbol(self, var_name, add_brackets=False, subscript=None):

@@ -641,7 +641,14 @@ def get_RSensor_bands(sensor_, path_sens, rmWVb=False):
 
 def convolve_sensor(sensor_, path_sens, R_hy, rmWVb=False):
     if sensor_ != 'Hy':
-        SRF, wl_sen = get_RSensor_bands(sensor_, path_sens, rmWVb=rmWVb)
+        if isinstance(path_sens, str):
+            # If a string is provided with the sensor's SRF path
+            SRF, wl_sen = get_RSensor_bands(sensor_, path_sens, rmWVb=rmWVb)
+        else:
+            # If the SRF path
+            SRF = path_sens[0]
+            wvl_sen = path_sens[1]
+        
         R_sen = R_hy @ SRF
         return(R_sen, wl_sen)
     else:
