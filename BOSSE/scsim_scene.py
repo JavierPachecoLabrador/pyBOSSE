@@ -53,7 +53,9 @@ def generate_pft_map(sp_map, sp_id, veg_, sp_pft):
 def generate_map(simnum_, inputs_, paths_, P_pft, veg_, meteo_):
     # Foreseen number of species, could change during scene colonization
     s_max = np.random.randint(1, inputs_['S_max'] + 1)
-
+    if 'S_fixed' in inputs_.keys():
+        s_max = copy.deepcopy(inputs_['S_fixed'])
+    
     # Filters PFT according to biome, GSI parameters and meteo conditions.
     sp_pft_ok, P_pft_ok = filter_pft_meteo(veg_, P_pft, meteo_)
 
