@@ -75,11 +75,26 @@ def generate_map(simnum_, inputs_, paths_, P_pft, veg_, meteo_):
     # Number of seeds per species. Ensure it cannot be > scene_sz ** 2
     # Use a separated RNG so that the rest of the random values are
     # the same
+    # TBD: Improve the fit of the number fo clusters for large scenes
+        # from scipy.stats import linregress
+        # x = [30, 600]
+        # y = [30, 600 ** 2]
+        # m = linregress(x, y)
     nRow, nCol = inputs_['scene_sz'], inputs_['scene_sz']
     if inputs_['sp_pattern'] == 'clustered':
+        # Define the number The number of elements randomly selected to form
+        # the basis of nearest-neighbour clusters as a funciton of the scene
+        # size
+        if (('clust_patch_factor' in inputs_.keys()) and 
+            isinstance(inputs_['clust_patch_factor'], (int, float))):
+            clus_patch_factor = int(inputs_['clust_patch_factor'])
+        else:
+            clus_patch_factor = 2
+        
         env_background = randomElementNN(
-            nRow, nCol, s_max + np.random.randint(0, int((nRow + nCol) // 2)))
+            nRow, nCol, s_max + np.random.randint(0, int((nRow + nCol) // clus_patch_factor)))
         sp_map = classifyArray(env_background, sp_ab_0).astype(int)
+
     elif inputs_['sp_pattern'] == 'intermediate':
         h_ = np.random.uniform(1., 1.5)
         env_background = mpd(nRow, nCol, h=h_)

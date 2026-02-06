@@ -310,6 +310,19 @@ def set_up_paths_and_inputs(options_, path_outputs, create_out_folder=True,
     return(inputs_, paths_)
 
 
+def create_scene_fname(inputs_, simnum_, seednum_=None):
+    if seednum_ is None:
+        sc_fname = 'BOSSE-Scene_%s_%s_sz%d_smx%d_rnd%d_SimNum_%02d' % (
+            inputs_['sp_pattern'], inputs_['clim_zone'], inputs_['scene_sz'],
+            inputs_['S_max'], inputs_['rseed_num'], simnum_)
+    else:
+        sc_fname = 'BOSSE-Scene_%s_%s_sz%d_smx%d_rnd%d-%d_SimNum_%02d' % (
+            inputs_['sp_pattern'], inputs_['clim_zone'], inputs_['scene_sz'],
+            inputs_['S_max'], inputs_['rseed_num'], seednum_, simnum_)
+    
+    return(sc_fname)
+    
+
 def create_empty_csv(fname_):
     df = pd.DataFrame(list())
     df.to_csv(fname_)
