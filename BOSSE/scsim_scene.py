@@ -89,10 +89,10 @@ def generate_map(simnum_, inputs_, paths_, P_pft, veg_, meteo_):
             isinstance(inputs_['clust_patch_factor'], (int, float))):
             clus_patch_factor = int(inputs_['clust_patch_factor'])
         else:
-            clus_patch_factor = 2
-        
+            clus_patch_factor = 1
+
         env_background = randomElementNN(
-            nRow, nCol, s_max + np.random.randint(0, int((nRow + nCol) // clus_patch_factor)))
+            nRow, nCol, s_max + np.random.randint(0, int((nRow + nCol) // (2 * clus_patch_factor))))
         sp_map = classifyArray(env_background, sp_ab_0).astype(int)
 
     elif inputs_['sp_pattern'] == 'intermediate':
