@@ -75,11 +75,6 @@ def generate_map(simnum_, inputs_, paths_, P_pft, veg_, meteo_):
     # Number of seeds per species. Ensure it cannot be > scene_sz ** 2
     # Use a separated RNG so that the rest of the random values are
     # the same
-    # TBD: Improve the fit of the number fo clusters for large scenes
-        # from scipy.stats import linregress
-        # x = [30, 600]
-        # y = [30, 600 ** 2]
-        # m = linregress(x, y)
     nRow, nCol = inputs_['scene_sz'], inputs_['scene_sz']
     if inputs_['sp_pattern'] == 'clustered':
         # Define the number The number of elements randomly selected to form
