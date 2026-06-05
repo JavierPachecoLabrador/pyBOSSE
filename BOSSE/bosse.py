@@ -17,7 +17,8 @@ import BOSSE.plotter as pl
 # %% Class BOSSE MODEL
 class BosseModel:
     # Class Initialization -----------------------------------------------------
-    def __init__(self, inputs_, paths_, RaoQ_w=3, sensor_list=None):
+    def __init__(self, inputs_, paths_, RaoQ_w=3, sensor_retrieval='_Hy',
+                 sensor_srf_list=None, sensor_rmWVb=False):
         self.inputs_ = inputs_
         self.paths_ = paths_
         
@@ -31,7 +32,7 @@ class BosseModel:
 
         # Define sensors spectral response function
         self.sensor_srf = dict()
-        self.sensor_rmWVb = False
+        self.sensor_rmWVb = sensor_rmWVb
 
         # Load constants and generate the scene matrix (X_)
         (self.X0_, self.all_vars, self.all_vals, self.PT_vars, self.PT_LB,
@@ -44,11 +45,13 @@ class BosseModel:
         # Load models
         self.get_bosse_models(self.paths_, self.all_vars,
                               self.inputs_['clim_zone'],
-                              sensor_list=sensor_list)
+                              sensor_retrieval=sensor_retrieval,
+                              sensor_srf_list=sensor_srf_list)
 
     # Method to load models
-    def get_bosse_models(self, paths_, all_vars, clim_zone, sensor_='_Hy',
-                         no_crop=True, sensor_list=None):
+    def get_bosse_models(self, paths_, all_vars, clim_zone,
+                         sensor_retrieval='_Hy', no_crop=True,
+                         sensor_srf_list=None):
         # Get PFTs of the climatic zone
         self.P_pft = pd.read_csv((paths_['1_dest_PFTdist_folder'] + clim_zone +
                              '_freq.csv'), sep=';')
@@ -103,8 +106,10 @@ class BosseModel:
 
         # Reflectance inversion emulator
         self.M_Rinv = joblib.load(paths_['1_dest_NNRinv_file_joblib'].replace(
-            'NNRinv_nlyr1_Hy', 'NNRinv_nlyr2%s' % sensor_).replace(
-                '.joblib', '_Slut_LAI020.joblib'))
+            'NNRinv_nlyr1', 'NNRinv_nlyr2').replace(
+                '.joblib', '_Slut_LAI020.joblib').replace(
+                    '_nlyr2_Hy', '_nlyr2_%s' % sensor_retrieval).replace(
+                        'nlyr2__', 'nlyr2_'))
         self.M_Rinv['pred_vars'] = [i_.replace('$', '') for i_ in
                                     self.M_Rinv['input_MPL']['pred_vars']]
         self.M_Rinv['Ip_'] = [all_vars.index(i_) for i_ in
@@ -124,8 +129,8 @@ class BosseModel:
                                 fname=plt_fname)
         
         # Load sensor spectral response functions
-        if sensor_list is not None:
-            self.import_sensor_srf(sensor_list)
+        if sensor_srf_list is not None:
+            self.import_sensor_srf(sensor_srf_list)
 
     # Scene Initializaton ------------------------------------------------------
     # Method prepare the Scence
@@ -455,10 +460,11 @@ class BosseModel:
     # Plot any BOSSE 2D Scene map
     def show_bosse_map(self, im_, title_lb='BOSSE simulation', xlb='x [pixel]',
                       ylb='y [pixel]', add_colorbar=True, cmap='viridis',
-                      plt_show=False, fname=None, ax=None):
+                      plt_show=False, fname=None, ax=None, vlim=None):
         pl.do_show_bosse_map(im_, title_lb=title_lb, xlb=xlb, ylb=ylb,
                              add_colorbar=add_colorbar, cmap=cmap,
-                             plt_show=plt_show, fname=fname,  ax=ax)
+                             plt_show=plt_show, fname=fname,  ax=ax,
+                             vlim=vlim)
 
     def show_pft_map(self, title_lb='BOSSE Plant Functional Types map',
                      xlb='x [pixel]', ylb='y [pixel]', fname=None,

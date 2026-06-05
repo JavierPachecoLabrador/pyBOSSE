@@ -136,8 +136,9 @@ def get_pet_metav(meteo_, yr_num, lat=45., elevation=300):
     return(meteo_, meteo_av, meteo_av30)
 
 
-def interp_lt_thr(x_, y_, th_=0., rp_val=0.):
-    shp_ = y_.shape
+def interp_lt_thr(x_, y_in, th_=0., rp_val=0.):
+    shp_ = y_in.shape
+    y_ = copy.deepcopy(y_in)
     I_ = y_ < th_
     if np.any(I_):
         if len(shp_) < 2:

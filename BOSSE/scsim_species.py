@@ -207,6 +207,13 @@ def set_plants(P_pft, clim_zone='Continental'):
         
     # Get GSI change limit
     veg_['gsi_lim'] = [.015, .008, .015, .008, .015, .025, .025]
+
+    # Get Crown sizes, assuming grass patches are around 30 cm. Crown data
+    # from Song et al. 2023 (https://doi.org/10.1093/jpe/rtae005)
+    # Use continental as a surrogate of Boreal and Temperate together with Dry
+    # ['DNF', 'ENF', 'DBF', 'EBF', 'SHB', 'GRAC3', 'GRAC4']
+    # if clim_zone == 'Continental': ()
+    # veg_['crown_size_up'] = 
     
     # Remove values for the PFTs that are not presen in the climatic zone if
     # provided

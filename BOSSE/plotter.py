@@ -254,13 +254,17 @@ def do_plot_meteo_ts(meteo_, plt_show=False, fname_=None):
 def do_show_bosse_map(im_, title_lb='BOSSE simulation', xlb='x [pixel]',
                       ylb='y [pixel]', add_colorbar=True, cmap=None,
                       fname=None, plt_show=False, return_fig_ax=False,
-                      ax=None):
+                      ax=None, vlim=None):
     if ax == None:
         fig, ax = plt.subplots(1, 1)
     else:
         fig = plt.gcf()
 
-    cax = ax.imshow(im_, cmap=cmap)
+    if vlim is not None:
+        cax = ax.imshow(im_, cmap=cmap, vmin=vlim[0], vmax=vlim[1])
+    else:
+        cax = ax.imshow(im_, cmap=cmap)
+
     ax.set_title(title_lb)
     ax.set_xlabel(xlb)
     ax.set_ylabel(ylb)
