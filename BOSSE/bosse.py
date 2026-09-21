@@ -317,6 +317,12 @@ class BosseModel:
         if np.any(rel_rand_noise > 0.) or np.any(abs_rand_noise > 0.):
             RF_ = self.add_random_noise(RF_, rel_rand_noise, abs_rand_noise,
                                         rand_seed)
+            wvl_sensor = self.M_R['wl']
+
+        if output_wvl:
+            return(RF_, wvl)
+        else:
+            return(RF_)
 
         if output_wvl:
             return(RF_, wvl)
@@ -430,7 +436,6 @@ class BosseModel:
         return(time_out, GPP, Rb, Rb_15C, NEP, LUE, LUEgreen, lE, T, H, Rn, G,
          ustar)
         
-
     # Methods to plot data -----------------------------------------------------
     # Methods to get variable's symbols and units, and label
     def get_variable_symbol(self, var_name, add_brackets=False, subscript=None):
