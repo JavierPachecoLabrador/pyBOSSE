@@ -17,7 +17,8 @@ import BOSSE.plotter as pl
 # %% Class BOSSE MODEL
 class BosseModel:
     # Class Initialization -----------------------------------------------------
-    def __init__(self, inputs_, paths_, RaoQ_w=3, sensor_list=None):
+    def __init__(self, inputs_, paths_, RaoQ_w=3, sensor_retrieval='_Hy',
+                 sensor_srf_list=None, sensor_rmWVb=False):
         self.inputs_ = inputs_
         self.paths_ = paths_
         
@@ -31,7 +32,7 @@ class BosseModel:
 
         # Define sensors spectral response function
         self.sensor_srf = dict()
-        self.sensor_rmWVb = False
+        self.sensor_rmWVb = sensor_rmWVb
 
         # Load constants and generate the scene matrix (X_)
         (self.X0_, self.all_vars, self.all_vals, self.PT_vars, self.PT_LB,
@@ -44,11 +45,13 @@ class BosseModel:
         # Load models
         self.get_bosse_models(self.paths_, self.all_vars,
                               self.inputs_['clim_zone'],
-                              sensor_list=sensor_list)
+                              sensor_retrieval=sensor_retrieval,
+                              sensor_srf_list=sensor_srf_list)
 
     # Method to load models
-    def get_bosse_models(self, paths_, all_vars, clim_zone, sensor_='_Hy',
-                         no_crop=True, sensor_list=None):
+    def get_bosse_models(self, paths_, all_vars, clim_zone,
+                         sensor_retrieval='_Hy', no_crop=True,
+                         sensor_srf_list=None):
         # Get PFTs of the climatic zone
         self.P_pft = pd.read_csv((paths_['1_dest_PFTdist_folder'] + clim_zone +
                              '_freq.csv'), sep=';')
@@ -103,8 +106,10 @@ class BosseModel:
 
         # Reflectance inversion emulator
         self.M_Rinv = joblib.load(paths_['1_dest_NNRinv_file_joblib'].replace(
-            'NNRinv_nlyr1_Hy', 'NNRinv_nlyr2%s' % sensor_).replace(
-                '.joblib', '_Slut_LAI020.joblib'))
+            'NNRinv_nlyr1', 'NNRinv_nlyr2').replace(
+                '.joblib', '_Slut_LAI020.joblib').replace(
+                    '_nlyr2_Hy', '_nlyr2_%s' % sensor_retrieval).replace(
+                        'nlyr2__', 'nlyr2_'))
         self.M_Rinv['pred_vars'] = [i_.replace('$', '') for i_ in
                                     self.M_Rinv['input_MPL']['pred_vars']]
         self.M_Rinv['Ip_'] = [all_vars.index(i_) for i_ in
@@ -124,8 +129,8 @@ class BosseModel:
                                 fname=plt_fname)
         
         # Load sensor spectral response functions
-        if sensor_list is not None:
-            self.import_sensor_srf(sensor_list)
+        if sensor_srf_list is not None:
+            self.import_sensor_srf(sensor_srf_list)
 
     # Scene Initializaton ------------------------------------------------------
     # Method prepare the Scence
@@ -288,20 +293,25 @@ class BosseModel:
         for sen in sensor_list:
             self.sensor_srf[sen] = get_RSensor_bands(
                 sen, self.paths_['0_sensors'], rmWVb=self.sensor_rmWVb)
-        
+
     # Method to predict reflectance factors
     def pred_refl_factors(self, X_, scsz_, sp_res=100, rel_rand_noise=0.,
-                          abs_rand_noise=0., rand_seed=None, sensor=None,
-                          output_wvl=False):
+                          abs_rand_noise=0., rand_seed=None, chnk_metrics=None,
+                          sensor=None, output_wvl=False):
+        if not isinstance(scsz_, list):
+            scsz_ = [scsz_, scsz_]
+
         RF_ = rtm.spectral_pred(
             self.M_R, X_[:, :, self.M_R['I_']].reshape(-1, self.M_R['nI']),
-            check_input=False, out_shape=(scsz_, scsz_, len(self.M_R['wl'])),
-            sp_res=sp_res)
+            check_input=False, out_shape=(scsz_[0], scsz_[1], len(self.M_R['wl'])),
+            sp_res=sp_res, chnk_metrics=chnk_metrics)
         
         # Convolve to sensor spectral features
         if ((sensor is not None) and (sensor != '_Hy')):
             RF_, wvl = convolve_sensor(sensor, self.paths_['0_sensors'], RF_,
                                        rmWVb=self.sensor_rmWVb)
+        else:
+            wvl = self.M_R['wl']
 
         # Add uncertainty (random noise)
         if np.any(rel_rand_noise > 0.) or np.any(abs_rand_noise > 0.):
@@ -314,6 +324,10 @@ class BosseModel:
         else:
             return(RF_)
 
+        if output_wvl:
+            return(RF_, wvl)
+        else:
+            return(RF_)
     
     # Method to predict optical traits from reflectance factors
     def pred_opt_traits(self, RFx_, out_sz, rel_rand_noise=0., 
@@ -337,10 +351,13 @@ class BosseModel:
     def pred_fluorescence_rad(self, X_, scsz_, out_sz, sp_res=100,
                               rel_rand_noise=0.,  abs_rand_noise=0.,
                               rand_seed=None):
+        if not isinstance(scsz_, list):
+            scsz_ = [scsz_, scsz_]
+
         if np.any(X_[:, :, self.I_rin] > 0):
             F_ = rtm.spectral_pred(
             self.M_F, X_[:, :, self.M_F['I_']].reshape(-1, self.M_F['nI']),
-                check_input=False, out_shape=(scsz_, scsz_,len(self.M_F['wl'])),
+                check_input=False, out_shape=(scsz_[0], scsz_[1],len(self.M_F['wl'])),
                 sp_res=sp_res)
                 # Avoid fluorescence when there is no light or LAI
             F_[F_ < 0.] = 0.
@@ -356,9 +373,12 @@ class BosseModel:
     # Method to predict land surface temperature
     def pred_landsurf_temp(self, X_, scsz_, sp_res=100, rel_rand_noise=0.,
                             abs_rand_noise=0., rand_seed=None):
+        if not isinstance(scsz_, list):
+            scsz_ = [scsz_, scsz_]
+        
         LST_ = rtm.spectral_pred(
             self.M_T, X_[:, :, self.M_T['I_']].reshape(-1, self.M_T['nI']),
-            check_input=False, out_shape=(scsz_, scsz_, len(self.M_T['wl'])),
+            check_input=False, out_shape=(scsz_[0], scsz_[1], len(self.M_T['wl'])),
             sp_res=sp_res)
 
         if np.any(rel_rand_noise > 0.) or np.all(abs_rand_noise > 0.):
@@ -445,10 +465,11 @@ class BosseModel:
     # Plot any BOSSE 2D Scene map
     def show_bosse_map(self, im_, title_lb='BOSSE simulation', xlb='x [pixel]',
                       ylb='y [pixel]', add_colorbar=True, cmap='viridis',
-                      plt_show=False, fname=None, ax=None):
+                      plt_show=False, fname=None, ax=None, vlim=None):
         pl.do_show_bosse_map(im_, title_lb=title_lb, xlb=xlb, ylb=ylb,
                              add_colorbar=add_colorbar, cmap=cmap,
-                             plt_show=plt_show, fname=fname,  ax=ax)
+                             plt_show=plt_show, fname=fname,  ax=ax,
+                             vlim=vlim)
 
     def show_pft_map(self, title_lb='BOSSE Plant Functional Types map',
                      xlb='x [pixel]', ylb='y [pixel]', fname=None,

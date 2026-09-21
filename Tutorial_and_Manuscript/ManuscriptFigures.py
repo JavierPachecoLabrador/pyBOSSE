@@ -877,6 +877,15 @@ print_dict(inputs_, 'inputs')
 bosse_M = BosseModel(inputs_, paths_)
 bosse_spatial_patterns = bosse_M.get_input_descriptors('sp_pattern')
 
+# bosse_M.initialize_scene(0, seednum_=100, verbose=True)
+# bosse_M.show_pft_map(
+#     title_lb='BOSSE Plant Functional Types map',
+#     fname=(output_folder + 'tutorial_1-0_PFTMap_' +inputs_['sp_pattern'] +
+#            '.png'), add_colorbar=True, plt_show=True)
+# bosse_M.show_species_map(title_lb='Species map ($S$ = %d)' % bosse_M.S_max,
+#                          fname=(output_folder + 'tutorial_1-0_SpMap_' +
+#                          inputs_['sp_pattern'] + '.png'), plt_show=True)
+
 # %% Figure 2
 fig_name = 'Fig_2.png'
 if os.path.isfile(output_folder + fig_name) is False:

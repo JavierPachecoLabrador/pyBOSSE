@@ -206,7 +206,7 @@ def set_bosse_paths(pth_out='', pth_root='', pth_bosse='', sf_out='',
     paths_['1_dest_NNRinv_file_pkl'] = (paths_['1_dest_NNRinv_folder'] +
                                         'NNRinv.pkl')
     paths_['1_dest_NNRinv_file_joblib'] = (paths_['1_dest_NNRinv_folder'] +
-                                        'NNRinv.joblib')
+                                           'NNRinv.joblib')
     
     # Soil LUTs
     paths_['1_ori_soilLUT_train_full'] = (paths_['1_ori_NNR_file_train'].replace(
@@ -309,6 +309,19 @@ def set_up_paths_and_inputs(options_, path_outputs, create_out_folder=True,
 
     return(inputs_, paths_)
 
+
+def create_scene_fname(inputs_, simnum_, seednum_=None):
+    if seednum_ is None:
+        sc_fname = 'BOSSE-Scene_%s_%s_sz%d_smx%d_rnd%d_SimNum_%02d' % (
+            inputs_['sp_pattern'], inputs_['clim_zone'], inputs_['scene_sz'],
+            inputs_['S_max'], inputs_['rseed_num'], simnum_)
+    else:
+        sc_fname = 'BOSSE-Scene_%s_%s_sz%d_smx%d_rnd%d-%d_SimNum_%02d' % (
+            inputs_['sp_pattern'], inputs_['clim_zone'], inputs_['scene_sz'],
+            inputs_['S_max'], inputs_['rseed_num'], seednum_, simnum_)
+    
+    return(sc_fname)
+    
 
 def create_empty_csv(fname_):
     df = pd.DataFrame(list())
@@ -492,7 +505,7 @@ def get_predobs_stats(pred_in, obs_in, get_lm=False):
             vals[stats.index('MSE')] = metrics.mean_squared_error(obs_, pred_)
             vals[stats.index('RRMSE')] = (100 *
                                           div_zeros(vals[stats.index('RMSE')],
-                                                    np.nanmean(pred_)))
+                                                    np.nanmean(pred_))).squeeze()
 
             # Get the scores and correlation coefficients if there are more
             # than 2 datapoints 
@@ -513,7 +526,7 @@ def get_predobs_stats(pred_in, obs_in, get_lm=False):
                     range_y = np.abs(np.max(obs_[Iz_]) - np.min(obs_[Iz_]))
                     vals[stats.index('NRMSE')] = (
                         100 * np.sqrt(div_zeros(vals[stats.index('MSE')],
-                                                np.abs(range_y))))
+                                                np.abs(range_y)))).squeeze()
             
             # Get the model, if requested and enough data
             if (get_lm is True) and ((nup_ > 1) and (nuo_ > 1)):
@@ -605,11 +618,11 @@ def get_RSensor_bands(sensor_, path_sens, rmWVb=False):
                 wl0, loc=df[i_, 0], scale=df[i_, 1])
         #     plt.plot(wl0, RSensor_bands[:, i_])
         # plt.show()
-    elif sensor_ == 'EnMAP':
+    elif sensor_ in ['EnMAP', 'PRISMA', 'CHIME']:
         # https://www.enmap.org/data/doc/EnMAP_Spectral_Bands_update.xlsx
         # Mixed VNIR and SWIR, using SWIR above 900 nm as reported in
         # EnMAP specifications document
-        df = pd.read_csv(path_sens + 'EnMAP_SpectralFeatures.txt', sep=";")
+        df = pd.read_csv(path_sens + f'{sensor_}_SpectralFeatures.txt', sep=";")
         RSensor_bands = np.zeros((2001, df.shape[0]))
         wl0 = np.arange(400, 2401)
         wl = df['CW'].values

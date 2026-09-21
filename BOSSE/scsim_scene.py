@@ -55,7 +55,7 @@ def generate_map(simnum_, inputs_, paths_, P_pft, veg_, meteo_):
     s_max = np.random.randint(1, inputs_['S_max'] + 1)
     if 'S_fixed' in inputs_.keys():
         s_max = copy.deepcopy(inputs_['S_fixed'])
-        
+    
     # Filters PFT according to biome, GSI parameters and meteo conditions.
     sp_pft_ok, P_pft_ok = filter_pft_meteo(veg_, P_pft, meteo_)
 
@@ -77,9 +77,19 @@ def generate_map(simnum_, inputs_, paths_, P_pft, veg_, meteo_):
     # the same
     nRow, nCol = inputs_['scene_sz'], inputs_['scene_sz']
     if inputs_['sp_pattern'] == 'clustered':
+        # Define the number The number of elements randomly selected to form
+        # the basis of nearest-neighbour clusters as a funciton of the scene
+        # size
+        if (('clust_patch_factor' in inputs_.keys()) and 
+            isinstance(inputs_['clust_patch_factor'], (int, float))):
+            clus_patch_factor = int(inputs_['clust_patch_factor'])
+        else:
+            clus_patch_factor = 1
+
         env_background = randomElementNN(
-            nRow, nCol, s_max + np.random.randint(0, int((nRow + nCol) // 2)))
+            nRow, nCol, s_max + np.random.randint(0, int((nRow + nCol) // (2 * clus_patch_factor))))
         sp_map = classifyArray(env_background, sp_ab_0).astype(int)
+
     elif inputs_['sp_pattern'] == 'intermediate':
         h_ = np.random.uniform(1., 1.5)
         env_background = mpd(nRow, nCol, h=h_)
